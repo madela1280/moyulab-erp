@@ -75,6 +75,7 @@ const handleSave = async () => {
       // 기존 로그인 세션 무효화 후 즉시 로그인 페이지로
       localStorage.removeItem('erp_auth');
       localStorage.removeItem('erp_auth_exp');
+      sessionStorage.removeItem('erp_auth'); 
       window.location.href = '/login';
       return;
     }
