@@ -46,7 +46,7 @@ export default function AdminSetting() {
     }
   }, []);
 
-  const handleSave = async () => {
+const handleSave = async () => {
   setStatus(null);
 
   if (!name.trim()) { setStatus('이름을 입력하세요.'); return; }
@@ -58,13 +58,13 @@ export default function AdminSetting() {
     localStorage.setItem('admin_phone', phone.trim());
     localStorage.setItem('admin_id', ADMIN_ID_FIXED);
 
-    // 비밀번호 변경/설정이 들어온 경우에만 갱신 + 세션 무효화 후 로그인 페이지로
     let passwordChanged = false;
     if (pw) {
       const salt = randomSalt();
       const hash = await sha256(salt + '|' + pw);
       localStorage.setItem('admin_pw_salt', salt);
       localStorage.setItem('admin_pw_hash', hash);
+      localStorage.setItem('admin_pw_set', '1');   // ✅ 비번 설정됨 플래그
       passwordChanged = true;
     }
 
@@ -72,7 +72,7 @@ export default function AdminSetting() {
     setStatus('저장되었습니다.');
 
     if (passwordChanged) {
-      // 기존 로그인 세션 제거 후 로그인 페이지로 이동
+      // 기존 로그인 세션 무효화 후 즉시 로그인 페이지로
       localStorage.removeItem('erp_auth');
       localStorage.removeItem('erp_auth_exp');
       window.location.href = '/login';

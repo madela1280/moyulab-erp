@@ -17,51 +17,45 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const checkAuth = () => {
+    const decide = () => {
       try {
-        const hasAdminPw = !!localStorage.getItem('admin_pw_hash'); // 비번 설정 여부
+        // ✅ 비밀번호 설정 여부는 'admin_pw_set' 플래그로 판단
+        const pwSet = localStorage.getItem('admin_pw_set') === '1';
+
+        if (!pwSet) {
+          setView('admin'); // 비번 미설정 → 관리자 설정
+          return;
+        }
+
+        // 비번 설정됨 → 인증 여부로 분기
         const auth = localStorage.getItem('erp_auth');
         const exp = localStorage.getItem('erp_auth_exp');
         const authed = auth === '1' && exp && Date.now() < Number(exp);
 
-        if (!hasAdminPw) {
-          setView('admin'); // 비번 없음 → 관리자 설정
-          return;
-        }
         if (!authed) {
-          setView('login'); // 비번 있음 + 미인증 → 로그인
+          setView('login'); // 미인증 → 로그인 페이지로
           return;
         }
-        setView('app');     // 인증됨 → 전체 앱
+
+        setView('app'); // 인증됨 → 전체 앱
       } catch {
         setView('login');
       }
     };
 
-    checkAuth();
-
-    // 관리자 비번 저장 직후 자동 반영되도록 storage 이벤트 감지
-    window.addEventListener('storage', checkAuth);
-    return () => window.removeEventListener('storage', checkAuth);
+    decide();
+    // 혹시 다른 탭에서 비번 저장/로그인 상태 바뀌면 바로 반영
+    window.addEventListener('storage', decide);
+    return () => window.removeEventListener('storage', decide);
   }, []);
 
-  // 라우팅 처리
+  // 라우팅
   useEffect(() => {
-    if (view === 'login') {
-      router.replace('/login');
-    }
+    if (view === 'login') router.replace('/login');
   }, [view, router]);
 
   if (view === 'loading') return null;
-
-  if (view === 'admin') {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <AdminSetting />
-      </div>
-    );
-  }
-
+  if (view === 'admin')   return <div className="min-h-screen bg-gray-50 p-6"><AdminSetting /></div>;
   return <AppShell />;
 }
 
