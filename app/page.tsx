@@ -25,13 +25,8 @@ const MENUS: MenuNode[] = [
   {
     label: "기기관리",
     children: [
-      { label: "락티나" },
-      { label: "심포니" },
-      { label: "스윙" },
-      { label: "스윙맥시" },
-      { label: "프리스타일" },
-      { label: "시밀래" },
-      { label: "각시밀" },
+      { label: "락티나" }, { label: "심포니" }, { label: "스윙" },
+      { label: "스윙맥시" }, { label: "프리스타일" }, { label: "시밀래" }, { label: "각시밀" },
     ],
   },
   { label: "데이터 업로드", children: [{ label: "신규가입" }, { label: "반품접수" }] },
@@ -39,8 +34,7 @@ const MENUS: MenuNode[] = [
     label: "대여관리",
     children: [
       { label: "만기문자", children: [{ label: "만기3일전" }, { label: "만기지남" }] },
-      { label: "회수중" },
-      { label: "미회수" }
+      { label: "회수중" }, { label: "미회수" }
     ]
   },
   { label: "유축기현황", children: [{ label: "대여중" }, { label: "회수중" }, { label: "재고" }, { label: "수리중" }, { label: "문제기기" }, { label: "폐기" }] },
@@ -54,7 +48,6 @@ const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "통합관리>온라인": OnlineManagement,
   "통합관리>보건소": HealthCenterManagement,
   "통합관리>조리원": PostpartumManagement,
-
   "기기관리>심포니": DeviceSymphony,
   "기기관리>락티나": DeviceLactina,
   "기기관리>스윙": DeviceSwing,
@@ -62,25 +55,30 @@ const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "기기관리>프리스타일": DeviceFreestyle,
   "기기관리>시밀래": DeviceSirilac,
   "기기관리>각시밀": DeviceGaksimil,
-
   "데이터 업로드>신규가입": NewSignup,
-
-  // 관리자 설정 연결
   "사용자 관리>관리자 설정": AdminSetting,
 };
 
 export default function Home() {
   const router = useRouter();
 
-  // 기본 화면은 관리자 설정로
+  // 기본 화면: 사용자 관리 > 관리자 설정
   const [openTop, setOpenTop] = useState<string>("사용자 관리");
   const [activeSub, setActiveSub] = useState<string | null>("관리자 설정");
   const [activeKey, setActiveKey] = useState<string>("사용자 관리>관리자 설정");
 
-  // 인증 체크 완료 전에는 렌더 보류 (깜빡임 방지)
+  // 서브메뉴 표시/토글 (⚠️ 훅은 early return 앞에!)
+  const [visibleSubOf, setVisibleSubOf] = useState<string | null>(openTop);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearTimer = () => { if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; } };
+  const startHide = () => { clearTimer(); hideTimer.current = setTimeout(() => setVisibleSubOf(null), 2000); };
+
+  // 인증 체크 완료 전까지 렌더 보류
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     try {
       const hasAdminPw = !!localStorage.getItem('admin_pw_hash'); // 비번 설정 여부
       const auth = localStorage.getItem('erp_auth');
@@ -88,37 +86,32 @@ export default function Home() {
       const authed = auth === '1' && exp && Date.now() < Number(exp);
 
       if (!hasAdminPw) {
-        // ① 비번이 아직 없으면: 첫 화면 = 관리자 설정 (로그인 없이)
+        // 초기 세팅 단계: 로그인 없이 관리자 설정 보여줌
         setOpenTop("사용자 관리");
         setActiveSub("관리자 설정");
         setActiveKey("사용자 관리>관리자 설정");
+        setVisibleSubOf("사용자 관리");
         setReady(true);
         return;
       }
 
-      // ② 비번이 설정되어 있으면: 인증 필요 → 없으면 /login으로 보냄
       if (!authed) {
         router.replace('/login');
         return;
       }
 
-      // ③ 인증되어 있으면: 원하는 초기화면 유지(관리자 설정부터 시작)
       setOpenTop("사용자 관리");
       setActiveSub("관리자 설정");
       setActiveKey("사용자 관리>관리자 설정");
+      setVisibleSubOf("사용자 관리");
       setReady(true);
     } catch {
       router.replace('/login');
     }
   }, [router]);
 
+  // 인증 확인 전에는 아무것도 렌더하지 않음 (서버/클라이언트 동기화)
   if (!ready) return null;
-
-  // 서브메뉴 표시/토글
-  const [visibleSubOf, setVisibleSubOf] = useState<string | null>(openTop);
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearTimer = () => { if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; } };
-  const startHide = () => { clearTimer(); hideTimer.current = setTimeout(() => setVisibleSubOf(null), 2000); };
 
   const topMenu = useMemo(() => MENUS.find(m => m.label === openTop) || null, [openTop]);
   const subItems = topMenu?.children ?? [];
@@ -157,20 +150,14 @@ export default function Home() {
                     else setVisibleSubOf(null);
                     setActiveKey(m.label);
                   }}
-                  className={`text-[0.95rem] font-semibold ${
-                    openTop === m.label ? "text-black" : "text-gray-700 hover:text-black"
-                  }`}
+                  className={`text-[0.95rem] font-semibold ${openTop === m.label ? "text-black" : "text-gray-700 hover:text-black"}`}
                 >
                   {m.label}
                 </button>
 
                 {/* 소카테고리 */}
                 {visibleSubOf === m.label && (m.children ?? []).length > 0 && (
-                  <div
-                    className="absolute left-0 top-full mt-2 z-30"
-                    onMouseEnter={clearTimer}
-                    onMouseLeave={startHide}
-                  >
+                  <div className="absolute left-0 top-full mt-2 z-30" onMouseEnter={clearTimer} onMouseLeave={startHide}>
                     <div className="inline-flex whitespace-nowrap items-center gap-2 bg-white border rounded-full shadow px-3 py-1">
                       {m.children!.map((s) => (
                         <button
@@ -204,6 +191,7 @@ export default function Home() {
     </div>
   );
 }
+
 
 
 
