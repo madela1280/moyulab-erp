@@ -16,29 +16,55 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    try {
-      const hasAdminPw = !!localStorage.getItem('admin_pw_hash'); // 비번 설정 여부
-      const auth = localStorage.getItem('erp_auth');
-      const exp = localStorage.getItem('erp_auth_exp');
-      const authed = auth === '1' && exp && Date.now() < Number(exp);
 
-      if (!hasAdminPw) { setView('admin'); return; }    // 비번 없으면 관리자 설정 먼저
-      if (!authed)     { setView('login'); return; }    // 비번 있고 미인증 → 로그인
-      setView('app');                                   // 인증됨 → 전체 앱
-    } catch {
-      setView('login');
-    }
+    const checkAuth = () => {
+      try {
+        const hasAdminPw = !!localStorage.getItem('admin_pw_hash'); // 비번 설정 여부
+        const auth = localStorage.getItem('erp_auth');
+        const exp = localStorage.getItem('erp_auth_exp');
+        const authed = auth === '1' && exp && Date.now() < Number(exp);
+
+        if (!hasAdminPw) {
+          setView('admin'); // 비번 없음 → 관리자 설정
+          return;
+        }
+        if (!authed) {
+          setView('login'); // 비번 있음 + 미인증 → 로그인
+          return;
+        }
+        setView('app');     // 인증됨 → 전체 앱
+      } catch {
+        setView('login');
+      }
+    };
+
+    checkAuth();
+
+    // 관리자 비번 저장 직후 자동 반영되도록 storage 이벤트 감지
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
   }, []);
 
-  // 라우팅
+  // 라우팅 처리
   useEffect(() => {
-    if (view === 'login') router.replace('/login');
+    if (view === 'login') {
+      router.replace('/login');
+    }
   }, [view, router]);
 
   if (view === 'loading') return null;
-  if (view === 'admin')   return <div className="min-h-screen bg-gray-50 p-6"><AdminSetting /></div>;
+
+  if (view === 'admin') {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <AdminSetting />
+      </div>
+    );
+  }
+
   return <AppShell />;
 }
+
 
 
 
