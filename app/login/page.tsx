@@ -43,26 +43,28 @@ export default function LoginPage() {
   };
 
   return (
-    // 배경과 로고 영역 색 동일(회색 계열)
+    // 배경과 카드 색 동일
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-100">
-      {/* 카드 배경을 배경색과 동일하게 맞춤 */}
       <div className="w-full max-w-sm rounded-lg p-6 bg-gray-100">
-        {/* 로고 + 타이틀: 글자 20% 크게, 진한 회색 */}
-        <div className="flex items-center justify-center gap-2 mb-5">
+        {/* 로고 50% 확대(28→42), 타이틀 20% 더 크게(1.2rem→1.44rem), 더 옅은 회색, 좌측으로 1cm 이동 */}
+        <div
+          className="flex items-center justify-center gap-2 mb-5"
+          style={{ transform: 'translateX(-1cm)' }}
+        >
           <Image
             src="/moyulogo.jpg"   // public/moyulogo.jpg
             alt="moulab logo"
-            width={28}
-            height={28}
+            width={42}
+            height={42}
             priority
             className="rounded-sm"
           />
-          <h1 className="text-[1.2rem] font-extrabold text-gray-700">
+          <h1 className="text-[1.44rem] font-bold text-gray-600">
             moulab ERP 로그인
           </h1>
         </div>
 
-        {/* 입력 박스는 대비를 위해 화이트 */}
+        {/* 입력 박스 */}
         <div className="mb-3">
           <input
             type="text"
@@ -103,4 +105,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
 
