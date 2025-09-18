@@ -45,21 +45,20 @@ export default function LoginPage() {
   return (
     // 배경과 카드 색 동일
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-100">
+      {/* 카드도 같은 배경색, 내부 패딩 기준으로 헤더/입력칸 좌측 정렬 */}
       <div className="w-full max-w-sm rounded-lg p-6 bg-gray-100">
-        {/* 로고 50% 확대(28→42), 타이틀 20% 더 크게(1.2rem→1.44rem), 더 옅은 회색, 좌측으로 1cm 이동 */}
-        <div
-          className="flex items-center justify-center gap-2 mb-5"
-          style={{ transform: 'translateX(-1cm)' }}
-        >
+        {/* ⬇ 로고 50% 확대(42→63), 제목 50% 확대(1.44rem→2.16rem), 훨씬 연한 회색, 좌측 정렬 */}
+        {/* 입력칸과 같은 폭(컨테이너 패딩 안)에서 살짝 여백만 주도록 gap과 마진만 사용 */}
+        <div className="flex items-center gap-3 mb-4">
           <Image
-            src="/moyulogo.jpg"   // public/moyulogo.jpg
+            src="/moyulogo.jpg"  // public/moyulogo.jpg
             alt="moulab logo"
-            width={42}
-            height={42}
+            width={63}
+            height={63}
             priority
             className="rounded-sm"
           />
-          <h1 className="text-[1.44rem] font-bold text-gray-600">
+          <h1 className="text-[2.16rem] leading-tight font-bold text-gray-400">
             moulab ERP 로그인
           </h1>
         </div>
@@ -85,7 +84,7 @@ export default function LoginPage() {
           />
         </div>
 
-        <label className="flex items-center text-sm mb-4">
+        <label className="flex items-center text-sm mb-4 select-none">
           <input
             type="checkbox"
             checked={rememberId}
@@ -105,5 +104,6 @@ export default function LoginPage() {
     </div>
   );
 }
+
 
 
