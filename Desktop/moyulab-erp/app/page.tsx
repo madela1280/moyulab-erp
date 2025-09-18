@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import React, { useMemo, useRef, useState } from "react";
+
+// 기존 컴포넌트들
 import UnifiedManagement from "./components/UnifiedManagement";
 import NewSignup from "./components/NewSignup";
 import OnlineManagement from './components/OnlineManagement';
@@ -14,6 +16,17 @@ import DeviceSwingMaxi from "./components/DeviceSwingMaxi";
 import DeviceFreestyle from "./components/DeviceFreestyle";
 import DeviceSirilac from "./components/DeviceSirilac";
 import DeviceGaksimil from "./components/DeviceGaksimil";
+
+// 새로 추가할 사용자 관리 관련 (임시 placeholder)
+function UserAdd() {
+  return <div className="p-6 bg-white rounded shadow">👤 사용자 추가 화면 (추후 구현)</div>;
+}
+function UserPermission() {
+  return <div className="p-6 bg-white rounded shadow">✅ 권한 설정 화면 (추후 구현)</div>;
+}
+function AdminSettings() {
+  return <div className="p-6 bg-white rounded shadow">🔑 관리자 설정 화면 (추후 구현)</div>;
+}
 
 type MenuNode = { label: string; children?: MenuNode[] };
 
@@ -47,11 +60,20 @@ const MENUS: MenuNode[] = [
   { label: "집계", children: [{ label: "매출", children: [{ label: "거래처별" }, { label: "기간별" }, { label: "유축기별" }] }] },
 ];
 
+// 화면 매핑
 const VIEW_MAP: Record<string, React.ComponentType<any>> = {
+  // 사용자 관리
+  "사용자 관리>사용자 추가": UserAdd,
+  "사용자 관리>권한설정": UserPermission,
+  "사용자 관리>관리자 설정": AdminSettings,
+
+  // 통합관리
   "통합관리": UnifiedManagement,
   "통합관리>온라인": OnlineManagement,
   "통합관리>보건소": HealthCenterManagement,
   "통합관리>조리원": PostpartumManagement,
+
+  // 기기관리
   "기기관리>심포니": DeviceSymphony,
   "기기관리>락티나": DeviceLactina,
   "기기관리>스윙": DeviceSwing,
@@ -59,13 +81,26 @@ const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "기기관리>프리스타일": DeviceFreestyle,
   "기기관리>시밀래": DeviceSirilac,
   "기기관리>각시밀": DeviceGaksimil,
+
+  // 데이터 업로드
   "데이터 업로드>신규가입": NewSignup,
+  // "데이터 업로드>반품접수": ReturnsIntake, // 추후 구현
 };
+
+// (옵션) 반품접수 자리 표시자
+function ReturnsIntake() {
+  return (
+    <div className="bg-white border rounded shadow-sm mt-8">
+      <div className="px-4 py-3 font-semibold border-b">반품접수</div>
+      <div className="p-6 text-sm text-gray-500">반품 접수 화면은 추후 연결합니다.</div>
+    </div>
+  );
+}
 
 export default function Home() {
   const [openTop, setOpenTop] = useState<string>("통합관리");
   const [activeSub, setActiveSub] = useState<string | null>(null);
-  const [activeKey, setActiveKey] = useState<string>("통합관리"); // ✅ 로그인 후 기본은 통합관리
+  const [activeKey, setActiveKey] = useState<string>("통합관리");
 
   const [visibleSubOf, setVisibleSubOf] = useState<string | null>("통합관리");
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,7 +111,7 @@ export default function Home() {
   const subItems = topMenu?.children ?? [];
   const subMenu = useMemo(() => subItems.find(s => s.label === activeSub) || null, [subItems, activeSub]);
 
-  const pillBase = "px-[0.6rem] h-[1.6rem] leading-[1.6rem] text-[0.7rem] rounded-full border";
+  const pillBase = "px-[0.6rem] h-[1.6rem] leading-[1.6rem] text-[0.62rem] rounded-full border";
   const pillIdle = "bg-white border-gray-300 text-gray-700 hover:bg-gray-50";
   const pillActive = "bg-[#e7eef8] border-[#b7c4dd] text-[#2b4a7f] font-medium";
 
@@ -85,15 +120,15 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <header className="bg-[#f4f7fb] border-b border-[#d2dbe7] px-6 pt-3 pb-2">
+      <header className="bg-gray-100 border-b px-6 pt-3 pb-2">
         <div className="flex items-center">
           <div className="flex items-center space-x-3">
             <Image src="/moyulogo.jpg" alt="Moyulab Logo" width={36} height={36} priority />
-            <h1 className="text-xl font-bold text-gray-700">Moulab Rental ERP</h1>
+            <h1 className="text-xl font-bold text-gray-700">Moyulab Rental ERP</h1>
           </div>
 
           {/* 대카테고리 */}
-          <nav id="category-bar" className="hidden md:flex items-center gap-[2.4rem] ml-[380px]">
+          <nav className="hidden md:flex items-center gap-[2.4rem] ml-[380px]">
             {MENUS.map((m) => (
               <div
                 key={m.label}
@@ -102,9 +137,6 @@ export default function Home() {
                 onMouseLeave={startHide}
               >
                 <button
-                  className={`text-[0.95rem] font-semibold ${
-                    openTop === m.label ? "text-black" : "text-gray-700 hover:text-black"
-                  }`}
                   onClick={() => {
                     setOpenTop(m.label);
                     setActiveSub(null);
@@ -112,6 +144,9 @@ export default function Home() {
                     else setVisibleSubOf(null);
                     setActiveKey(m.label);
                   }}
+                  className={`text-[0.95rem] font-semibold ${
+                    openTop === m.label ? "text-black" : "text-gray-700 hover:text-black"
+                  }`}
                 >
                   {m.label}
                 </button>
@@ -145,18 +180,6 @@ export default function Home() {
           </nav>
 
           <div className="flex-1" />
-
-          {/* ✅ 로그아웃 버튼 */}
-          <button
-            onClick={async () => {
-              await fetch("/api/login", { method: "DELETE" });
-              localStorage.removeItem("session");
-              window.location.href = "/login";
-            }}
-            className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
-          >
-            로그아웃
-          </button>
         </div>
       </header>
 
