@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import React, { useMemo, useRef, useState } from "react";
+
 import UnifiedManagement from "../components/UnifiedManagement";
 import NewSignup from "../components/NewSignup";
-import OnlineManagement from '../components/OnlineManagement';
-import HealthCenterManagement from '../components/HealthCenterManagement';
-import PostpartumManagement from '../components/PostpartumManagement';
+import OnlineManagement from "../components/OnlineManagement";
+import HealthCenterManagement from "../components/HealthCenterManagement";
+import PostpartumManagement from "../components/PostpartumManagement";
 import DeviceSymphony from "../components/DeviceSymphony";
 import DeviceLactina from "../components/DeviceLactina";
 import DeviceSwing from "../components/DeviceSwing";
@@ -33,8 +34,8 @@ const MENUS: MenuNode[] = [
     label: "대여관리",
     children: [
       { label: "만기문자", children: [{ label: "만기3일전" }, { label: "만기지남" }] },
-      { label: "회수중" }, { label: "미회수" }
-    ]
+      { label: "회수중" }, { label: "미회수" },
+    ],
   },
   { label: "유축기현황", children: [{ label: "대여중" }, { label: "회수중" }, { label: "재고" }, { label: "수리중" }, { label: "문제기기" }, { label: "폐기" }] },
   { label: "문자", children: [{ label: "입금" }, { label: "보건소대여접수" }] },
@@ -66,16 +67,28 @@ export default function AppShell() {
 
   const [visibleSubOf, setVisibleSubOf] = useState<string | null>(openTop);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearTimer = () => { if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; } };
-  const startHide = () => { clearTimer(); hideTimer.current = setTimeout(() => setVisibleSubOf(null), 2000); };
 
-  const topMenu = useMemo(() => MENUS.find(m => m.label === openTop) || null, [openTop]);
+  const clearTimer = () => {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+  };
+
+  const startHide = () => {
+    clearTimer();
+    hideTimer.current = setTimeout(() => setVisibleSubOf(null), 2000);
+  };
+
+  const topMenu = useMemo(() => MENUS.find((m) => m.label === openTop) || null, [openTop]);
   const subItems = topMenu?.children ?? [];
-  const subMenu = useMemo(() => subItems.find(s => s.label === activeSub) || null, [subItems, activeSub]);
+  const subMenu = useMemo(() => subItems.find((s) => s.label === activeSub) || null, [subItems, activeSub]);
 
-  const pillBase = "px-[0.6rem] h-[1.6rem] leading-[1.6rem] text-[0.62rem] rounded-full border";
+  const pillBase =
+    "px-[0.6rem] h-[1.6rem] leading-[1.6rem] text-[0.62rem] rounded-full border";
   const pillIdle = "bg-white border-gray-300 text-gray-700 hover:bg-gray-50";
-  const pillActive = "bg-[#e7eef8] border-[#b7c4dd] text-[#2b4a7f] font-medium";
+  const pillActive =
+    "bg-[#e7eef8] border-[#b7c4dd] text-[#2b4a7f] font-medium";
 
   const ActiveView = VIEW_MAP[activeKey] ?? UnifiedManagement;
 
@@ -85,8 +98,16 @@ export default function AppShell() {
       <header className="bg-gray-100 border-b px-6 pt-3 pb-2">
         <div className="flex items-center">
           <div className="flex items-center space-x-3">
-            <Image src="/moyulogo.jpg" alt="Moulab Logo" width={36} height={36} priority />
-            <h1 className="text-xl font-bold text-gray-700">Moulab Rental ERP</h1>
+            <Image
+              src="/moyulogo.jpg"
+              alt="Moulab Logo"
+              width={36}
+              height={36}
+              priority
+            />
+            <h1 className="text-xl font-bold text-gray-700">
+              Moulab Rental ERP
+            </h1>
           </div>
 
           {/* 대카테고리 */}
@@ -95,7 +116,10 @@ export default function AppShell() {
               <div
                 key={m.label}
                 className="relative"
-                onMouseEnter={() => { clearTimer(); if (m.children?.length) setVisibleSubOf(m.label); }}
+                onMouseEnter={() => {
+                  clearTimer();
+                  if (m.children?.length) setVisibleSubOf(m.label);
+                }}
                 onMouseLeave={startHide}
               >
                 <button
@@ -106,14 +130,22 @@ export default function AppShell() {
                     else setVisibleSubOf(null);
                     setActiveKey(m.label);
                   }}
-                  className={`text-[0.95rem] font-semibold ${openTop === m.label ? "text-black" : "text-gray-700 hover:text-black"}`}
+                  className={`text-[0.95rem] font-semibold ${
+                    openTop === m.label
+                      ? "text-black"
+                      : "text-gray-700 hover:text-black"
+                  }`}
                 >
                   {m.label}
                 </button>
 
                 {/* 소카테고리 */}
                 {visibleSubOf === m.label && (m.children ?? []).length > 0 && (
-                  <div className="absolute left-0 top-full mt-2 z-30" onMouseEnter={clearTimer} onMouseLeave={startHide}>
+                  <div
+                    className="absolute left-0 top-full mt-2 z-30"
+                    onMouseEnter={clearTimer}
+                    onMouseLeave={startHide}
+                  >
                     <div className="inline-flex whitespace-nowrap items-center gap-2 bg-white border rounded-full shadow px-3 py-1">
                       {m.children!.map((s) => (
                         <button
@@ -124,7 +156,9 @@ export default function AppShell() {
                             setActiveKey(`${m.label}>${s.label}`);
                             setVisibleSubOf(m.label);
                           }}
-                          className={`${pillBase} ${activeSub === s.label ? pillActive : pillIdle}`}
+                          className={`${pillBase} ${
+                            activeSub === s.label ? pillActive : pillIdle
+                          }`}
                         >
                           {s.label}
                         </button>
@@ -147,3 +181,4 @@ export default function AppShell() {
     </div>
   );
 }
+
