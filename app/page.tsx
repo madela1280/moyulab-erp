@@ -14,7 +14,7 @@ import DeviceSwingMaxi from "./components/DeviceSwingMaxi";
 import DeviceFreestyle from "./components/DeviceFreestyle";
 import DeviceSirilac from "./components/DeviceSirilac";
 import DeviceGaksimil from "./components/DeviceGaksimil";
-import AdminSetting from "./components/UserManagement/AdminSetting"; // ✅ 관리자 설정
+import AdminSetting from "./components/UserManagement/AdminSetting";
 import { useRouter } from 'next/navigation';
 
 type MenuNode = { label: string; children?: MenuNode[] };
@@ -49,7 +49,6 @@ const MENUS: MenuNode[] = [
   { label: "집계", children: [{ label: "매출", children: [{ label: "거래처별" }, { label: "기간별" }, { label: "유축기별" }] }] },
 ];
 
-// 화면 매핑
 const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "통합관리": UnifiedManagement,
   "통합관리>온라인": OnlineManagement,
@@ -66,43 +65,44 @@ const VIEW_MAP: Record<string, React.ComponentType<any>> = {
 
   "데이터 업로드>신규가입": NewSignup,
 
-  // ✅ 관리자 설정 화면 연결
+  // 관리자 설정 연결
   "사용자 관리>관리자 설정": AdminSetting,
 };
-
-// (옵션) 반품접수 자리표시자
-function ReturnsIntake() {
-  return (
-    <div className="bg-white border rounded shadow-sm mt-8">
-      <div className="px-4 py-3 font-semibold border-b">반품접수</div>
-      <div className="p-6 text-sm text-gray-500">반품 접수 화면은 추후 연결합니다.</div>
-    </div>
-  );
-}
 
 export default function Home() {
   const router = useRouter();
 
-  // ✅ 초기 상태는 "사용자 관리 > 관리자 설정"을 가리키도록 설정
+  // 기본 화면은 관리자 설정로
   const [openTop, setOpenTop] = useState<string>("사용자 관리");
   const [activeSub, setActiveSub] = useState<string | null>("관리자 설정");
   const [activeKey, setActiveKey] = useState<string>("사용자 관리>관리자 설정");
 
-  // 인증 확인이 끝나기 전까지 렌더 잠깐 보류 → 깜빡임 방지
+  // 인증 체크 완료 전에는 렌더 보류 (깜빡임 방지)
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // 로컬 인증 체크: 없거나 만료면 /login으로 1회 이동
     try {
+      const hasAdminPw = !!localStorage.getItem('admin_pw_hash'); // 비번 설정 여부
       const auth = localStorage.getItem('erp_auth');
       const exp = localStorage.getItem('erp_auth_exp');
-      const ok = auth === '1' && exp && Date.now() < Number(exp);
+      const authed = auth === '1' && exp && Date.now() < Number(exp);
 
-      if (!ok) {
-        router.replace('/login');
-        return; // 렌더 중단
+      if (!hasAdminPw) {
+        // ① 비번이 아직 없으면: 첫 화면 = 관리자 설정 (로그인 없이)
+        setOpenTop("사용자 관리");
+        setActiveSub("관리자 설정");
+        setActiveKey("사용자 관리>관리자 설정");
+        setReady(true);
+        return;
       }
-      // 인증 OK → 관리자 설정 화면을 기본으로 노출
+
+      // ② 비번이 설정되어 있으면: 인증 필요 → 없으면 /login으로 보냄
+      if (!authed) {
+        router.replace('/login');
+        return;
+      }
+
+      // ③ 인증되어 있으면: 원하는 초기화면 유지(관리자 설정부터 시작)
       setOpenTop("사용자 관리");
       setActiveSub("관리자 설정");
       setActiveKey("사용자 관리>관리자 설정");
@@ -112,7 +112,6 @@ export default function Home() {
     }
   }, [router]);
 
-  // 깜빡임 방지: 인증 체크 전에는 아무것도 렌더하지 않음
   if (!ready) return null;
 
   // 서브메뉴 표시/토글
@@ -121,7 +120,6 @@ export default function Home() {
   const clearTimer = () => { if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; } };
   const startHide = () => { clearTimer(); hideTimer.current = setTimeout(() => setVisibleSubOf(null), 2000); };
 
-  // 현재 메뉴 데이터
   const topMenu = useMemo(() => MENUS.find(m => m.label === openTop) || null, [openTop]);
   const subItems = topMenu?.children ?? [];
   const subMenu = useMemo(() => subItems.find(s => s.label === activeSub) || null, [subItems, activeSub]);
@@ -206,6 +204,7 @@ export default function Home() {
     </div>
   );
 }
+
 
 
 
