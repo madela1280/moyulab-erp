@@ -61,9 +61,9 @@ const VIEW_MAP: Record<string, React.ComponentType<any>> = {
 
 export default function AppShell() {
   // 초기 화면은 관리자 설정
-  const [openTop, setOpenTop] = useState<string>("사용자 관리");
-  const [activeSub, setActiveSub] = useState<string | null>("관리자 설정");
-  const [activeKey, setActiveKey] = useState<string>("사용자 관리>관리자 설정");
+  const [openTop, setOpenTop] = useState<string>("통합관리");
+  const [activeSub, setActiveSub] = useState<string | null>(null);
+  const [activeKey, setActiveKey] = useState<string>("통합관리");
 
   const [visibleSubOf, setVisibleSubOf] = useState<string | null>(openTop);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
