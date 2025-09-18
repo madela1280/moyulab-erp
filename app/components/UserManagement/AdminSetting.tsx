@@ -47,32 +47,42 @@ export default function AdminSetting() {
   }, []);
 
   const handleSave = async () => {
-    setStatus(null);
+  setStatus(null);
 
-    if (!name.trim()) { setStatus('이름을 입력하세요.'); return; }
-    if (!phone.trim()) { setStatus('전화번호를 입력하세요.'); return; }
-    if (pw && pw !== pw2) { setStatus('비밀번호가 서로 다릅니다.'); return; }
+  if (!name.trim()) { setStatus('이름을 입력하세요.'); return; }
+  if (!phone.trim()) { setStatus('전화번호를 입력하세요.'); return; }
+  if (pw && pw !== pw2) { setStatus('비밀번호가 서로 다릅니다.'); return; }
 
-    try {
-      localStorage.setItem('admin_name', name.trim());
-      localStorage.setItem('admin_phone', phone.trim());
-      localStorage.setItem('admin_id', ADMIN_ID_FIXED);
+  try {
+    localStorage.setItem('admin_name', name.trim());
+    localStorage.setItem('admin_phone', phone.trim());
+    localStorage.setItem('admin_id', ADMIN_ID_FIXED);
 
-      // 비밀번호 변경이 들어온 경우에만 갱신
-      if (pw) {
-        const salt = randomSalt();
-        const hash = await sha256(salt + '|' + pw);
-        localStorage.setItem('admin_pw_salt', salt);
-        localStorage.setItem('admin_pw_hash', hash);
-      }
-
-      setPw(''); setPw2('');
-      setStatus('저장되었습니다.');
-    } catch (e) {
-      console.error(e);
-      setStatus('저장 중 오류가 발생했습니다.');
+    // 비밀번호 변경/설정이 들어온 경우에만 갱신 + 세션 무효화 후 로그인 페이지로
+    let passwordChanged = false;
+    if (pw) {
+      const salt = randomSalt();
+      const hash = await sha256(salt + '|' + pw);
+      localStorage.setItem('admin_pw_salt', salt);
+      localStorage.setItem('admin_pw_hash', hash);
+      passwordChanged = true;
     }
-  };
+
+    setPw(''); setPw2('');
+    setStatus('저장되었습니다.');
+
+    if (passwordChanged) {
+      // 기존 로그인 세션 제거 후 로그인 페이지로 이동
+      localStorage.removeItem('erp_auth');
+      localStorage.removeItem('erp_auth_exp');
+      window.location.href = '/login';
+      return;
+    }
+  } catch (e) {
+    console.error(e);
+    setStatus('저장 중 오류가 발생했습니다.');
+  }
+};
 
   return (
     <div className="max-w-lg bg-white rounded-lg shadow p-6">
