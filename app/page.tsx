@@ -1,12 +1,12 @@
 'use client';
 
 import Image from "next/image";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import UnifiedManagement from "./components/UnifiedManagement";
 import NewSignup from "./components/NewSignup";
-import OnlineManagement from './components/OnlineManagement'
-import HealthCenterManagement from './components/HealthCenterManagement'
-import PostpartumManagement from './components/PostpartumManagement'
+import OnlineManagement from './components/OnlineManagement';
+import HealthCenterManagement from './components/HealthCenterManagement';
+import PostpartumManagement from './components/PostpartumManagement';
 import DeviceSymphony from "./components/DeviceSymphony";
 import DeviceLactina from "./components/DeviceLactina";
 import DeviceSwing from "./components/DeviceSwing";
@@ -14,7 +14,7 @@ import DeviceSwingMaxi from "./components/DeviceSwingMaxi";
 import DeviceFreestyle from "./components/DeviceFreestyle";
 import DeviceSirilac from "./components/DeviceSirilac";
 import DeviceGaksimil from "./components/DeviceGaksimil";
-
+import { useRouter } from 'next/navigation';
 
 type MenuNode = { label: string; children?: MenuNode[] };
 
@@ -84,7 +84,8 @@ function ReturnsIntake() {
 }
 
 export default function Home() {
-  // 선택된 대/소 카테고리
+  const router = useRouter();
+  useEffect(() => { router.replace('/login'); }, []);
   const [openTop, setOpenTop] = useState<string>("통합관리");
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string>("통합관리"); // ✅ (1) 추가
