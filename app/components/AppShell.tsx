@@ -51,11 +51,13 @@ export const MENUS: MenuNode[] = [
 ];
 
 export const VIEW_MAP: Record<string, React.ComponentType<any>> = {
+  // 통합관리
   "통합관리": UnifiedManagement,
   "통합관리>온라인": OnlineManagement,
   "통합관리>보건소": HealthCenterManagement,
   "통합관리>조리원": PostpartumManagement,
 
+  // 기기관리
   "기기관리>심포니": DeviceSymphony,
   "기기관리>락티나": DeviceLactina,
   "기기관리>스윙": DeviceSwing,
@@ -64,39 +66,38 @@ export const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "기기관리>시밀래": DeviceSirilac,
   "기기관리>각시밀": DeviceGaksimil,
 
+  // 데이터 업로드
   "데이터 업로드>신규가입": NewSignup,
 
+  // 사용자 관리(관리자 전용)
   "사용자 관리>사용자 추가": UserAdd,
   "사용자 관리>관리자 설정": AdminSettingCentered,
   "사용자 관리>권한설정": PermissionSetting,
 };
 
-// 기존 PermissionGate를 아래로 교체
+// ✅ 공통 권한 게이트 (정확키/부모키 모두 허용)
 function PermissionGate({ routeKey, children }: { routeKey: string; children: React.ReactNode }) {
   const me = getCurrentUser();
   if (!me) return <LockScreen />;
 
-  // 관리자 통과
+  // 관리자 무조건 통과
   if (isAdmin(me)) return <>{children}</>;
 
-  // 관리자 전용 라우트 차단
+  // 관리자 전용 라우트는 관리자 외 차단
   if (ADMIN_ONLY_KEYS.has(routeKey)) return <LockScreen />;
 
-  // 우선 정확히 체크
+  // 정확히 일치하는 키로 읽기 권한
   if (canRead(me.id, routeKey)) return <>{children}</>;
 
-  // 상위 카테고리 기준 방어: "기기관리" 클릭 등
+  // 부모(대카테고리) 권한만 있어도 통과
   const top = routeKey.split('>')[0];
   if (canRead(me.id, top)) return <>{children}</>;
-
-  // 하위 카테고리 중 하나라도 읽기 권한이 있으면 진입 허용
-  const hasAnyChild = Object.keys(VIEW_MAP).some(k => k.startsWith(`${top}>`) && canRead(me.id, k));
-  if (hasAnyChild) return <>{children}</>;
 
   return <LockScreen />;
 }
 
 export default function AppShell() {
+  // 기본 랜딩은 통합관리
   const [openTop, setOpenTop] = useState<string>("통합관리");
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string>("통합관리");
@@ -126,7 +127,7 @@ export default function AppShell() {
             <h1 className="text-xl font-bold text-gray-700">Moulab Rental ERP</h1>
           </div>
 
-          {/* 대카테고리 */}
+        {/* 대카테고리 */}
           <nav className="hidden md:flex items-center gap-[2.4rem] ml-[380px]">
             {MENUS.map((m) => (
               <div
@@ -186,7 +187,6 @@ export default function AppShell() {
     </div>
   );
 }
-
 
 
 
