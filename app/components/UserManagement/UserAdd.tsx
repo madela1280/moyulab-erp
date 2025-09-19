@@ -120,9 +120,12 @@ export default function UserAdd() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* 폼 */}
-      <div className="bg-white rounded-lg shadow p-5">
+  <div className="p-4">
+    {/* 전체 폭 70%로 축소 + 가운데 정렬 */}
+    <div className="mx-auto w-[70%]">
+      <div className="grid gap-4 [grid-template-columns:0.35fr_0.65fr]">
+        {/* 좌: 사용자 추가 폼 */}
+        {/* 우: 사용자 목록 */}
         <h3 className="font-semibold mb-4">{editIdx === null ? '사용자 추가' : '사용자 수정'}</h3>
 
         <div className="space-y-3">
@@ -154,8 +157,10 @@ export default function UserAdd() {
           <button onClick={resetForm} className="px-4 py-2 bg-gray-100 rounded border hover:bg-gray-50">
             새로 입력
           </button>
-        </div>
-      </div>
+              </div>
+           </div> {/* ← 여기 추가된 래퍼 닫기 */}
+         </div>
+       );
 
       {/* 목록 */}
       <div className="bg-white rounded-lg shadow p-5">
