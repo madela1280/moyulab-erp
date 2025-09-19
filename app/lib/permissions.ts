@@ -67,3 +67,10 @@ export function extractRouteKeysFromViewMap(viewMap: Record<RouteKey, any>): Rou
 export function prettyLabelOf(routeKey: RouteKey) {
   return routeKey.split('>').join(' > ');
 }
+
+// 관리자 전용 라우트 키 모음
+export const ADMIN_ONLY_KEYS = new Set<string>([
+  "사용자 관리>권한설정",
+  "사용자 관리>관리자 설정",
+  "사용자 관리>사용자 추가",
+]);
