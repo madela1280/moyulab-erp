@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { rebuildCategoryViewsFromRules, lookupDeviceMeta } from '../lib/rules';
+import { rebuildCategoryViewsFromRules, lookupDeviceMeta, loadGuideMap } from '../lib/rules';
 
 type Row = Record<string, string>;
 
@@ -258,10 +258,11 @@ export default function NewSignup() {
         const obj: Row = {};
         columns.forEach((col, i) => { obj[col] = row[i] ?? ''; });
 
-        // 안내분류 자동 주입 (빈칸일 때만)
+        // 안내분류 자동 주입 (빈칸일 때만) - rules.ts의 guide_map 사용
         const vendor = norm(obj['거래처분류']);
+        const guideMap = loadGuideMap();
         if (!norm(obj['안내분류'])) {
-          const guide = getGuideByVendor(vendor);
+          const guide = guideMap[vendor] ?? '';
           if (guide) obj['안내분류'] = guide;
         }
 

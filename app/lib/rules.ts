@@ -54,6 +54,77 @@ export function uniqueVendorsFromUnified(): string[] {
   return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
+// ---- 날짜/상태 계산 유틸 ----
+function toInt(n: any) { return Number.parseInt(String(n), 10); }
+function parseDateLocal(s: string | undefined): Date | null {
+  const t = (s ?? '').toString().trim();
+  if (!t) return null;
+  // 숫자만 뽑아서 Y,M,D 조합 (2025-09-19 / 2025.9.19 / 2025/9/19 모두 허용)
+  const m = t.match(/\d+/g);
+  if (!m || m.length < 3) return null;
+  const y = toInt(m[0]); const mo = toInt(m[1]); const d = toInt(m[2]);
+  if (!y || !mo || !d) return null;
+  return new Date(y, mo - 1, d); // 로컬(한국) 기준
+}
+function startOfDay(d: Date): Date { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function diffDays(a: Date, b: Date): number {
+  const ms = startOfDay(a).getTime() - startOfDay(b).getTime();
+  return Math.round(ms / 86400000);
+}
+
+/**
+ * 상태 규칙(우선순위):
+ * 1) 반납완료일 있음 -> "회수완료"
+ * 2) 반납요청일 있음 -> "회수중"
+ * 3) 종료일 기준
+ *    - due - today ∈ [1,3] -> "만기3일전"
+ *    - due - today >= 0     -> "대여중"    (오늘 포함)
+ *    - due - today < 0      -> "만기지남"
+ * 4) 종료일 없으면 공란 유지
+ */
+export function computeStatusForRow(row: Row, today: Date = new Date()): string {
+  const has = (k: string) => ((row[k] ?? '').toString().trim() !== '');
+  if (has('반납완료일')) return '회수완료';
+  if (has('반납요청일')) return '회수중';
+
+  const due = parseDateLocal(row['종료일']);
+  if (!due) return (row['상태'] ?? '').toString().trim(); // 존중: 종료일 없으면 기존값 유지
+
+  const d = diffDays(due, startOfDay(today)); // (due - today) 일수
+  if (d >= 1 && d <= 3) return '만기3일전';
+  if (d >= 0) return '대여중';
+  return '만기지남';
+}
+
+export function applyStatusToRowInPlace(row: Row, today: Date = new Date()): boolean {
+  const next = computeStatusForRow(row, today);
+  if ((row['상태'] ?? '') !== next) {
+    row['상태'] = next;
+    return true;
+  }
+  return false;
+}
+
+let _statusRecalcLock = false;
+/** 통합관리 전체의 "상태"를 재계산 후 변경 있으면 저장 */
+export function recomputeStatusesNow() {
+  if (_statusRecalcLock) return;
+  _statusRecalcLock = true;
+  try {
+    const rows = loadUnifiedRows();
+    let changed = false;
+    const today = new Date();
+    rows.forEach(r => { if (applyStatusToRowInPlace(r, today)) changed = true; });
+    if (changed) {
+      // 저장 시 unified_rows_updated 이벤트 발생 → 그리드 자동 갱신
+      localStorage.setItem(LS_UNIFIED_ROWS, JSON.stringify(rows));
+      window.dispatchEvent(new Event('unified_rows_updated'));
+    }
+  } finally {
+    _statusRecalcLock = false;
+  }
+}
+
 // ---- 기기 인덱스 (7개 카테고리 전체 스캔) ----
 export type DeviceInfo = {
   구매렌탈?: string;  // '구매/렌탈' 값
@@ -117,6 +188,9 @@ export function applyAutoToRowInPlace(row: Row, deviceIndex?: Record<string, Dev
     if (info.에러횟수) row['에러횟수']  = info.에러횟수;
     if (info.제품)     row['제품']      = info.제품;
   }
+
+  // 상태 갱신
+  applyStatusToRowInPlace(row);
 }
 
 // ---- 카테고리 뷰(온라인/보건소/조리원) 재구성 ----
@@ -148,8 +222,7 @@ export function updateCategoryForVendors(vendors: string[], dest: Category) {
   rebuildCategoryViewsFromRules();
 }
 
-// app/lib/rules.ts
-
+// ---- 기기 메타 조회 ----
 export function lookupDeviceMeta(systemId: string) {
   const norm = (s: any) => (s ?? '').toString().trim();
   const id = norm(systemId);
@@ -178,3 +251,17 @@ export function lookupDeviceMeta(systemId: string) {
   } catch {}
   return null;
 }
+
+// ---- 자동 재계산 트리거: 저장/스토리지변경/주기적 ----
+if (typeof window !== 'undefined') {
+  const tick = () => recomputeStatusesNow();
+  window.addEventListener('unified_rows_updated', tick);
+  window.addEventListener('storage', (e: StorageEvent) => {
+    if (!e.key || e.key === LS_UNIFIED_ROWS) tick();
+  });
+  // 주기적 재계산(30분마다) → 날짜가 바뀌면 자동 반영
+  setInterval(tick, 30 * 60 * 1000);
+  // 초기 1회
+  setTimeout(tick, 0);
+}
+
