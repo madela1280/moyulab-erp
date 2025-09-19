@@ -5,16 +5,20 @@ import { getCurrentUser, isAdmin, getUserPerms, setUserPerms } from '@/app/lib/p
 import LockScreen from './LockScreen';
 import { VIEW_MAP, MENUS } from '../AppShell';
 
-type User = { id: string; name: string; phone?: string };
+// ✅ username(로그인 아이디)을 권한 키로 사용
+type User = { username: string; name: string; phone?: string };
 
-// 관리자 제외 사용자 목록
 function loadUsers(): User[] {
   try {
     const raw = localStorage.getItem('erp_users');
     const arr = raw ? JSON.parse(raw) : [];
     return arr
-      .filter((u: User) => u.id !== 'medela1280')
-      .map((u: any) => ({ id: u.id, name: u.name ?? u.id, phone: u.phone }));
+      .filter((u: any) => u.username !== 'medela1280') // 관리자 제외
+      .map((u: any) => ({
+        username: u.username,
+        name: u.name ?? u.username,
+        phone: u.phone,
+      }));
   } catch {
     return [];
   }
@@ -28,7 +32,7 @@ function extractTopLevelKeys(): string[] {
 export default function PermissionSetting() {
   const me = getCurrentUser();
   const [users, setUsers] = useState<User[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedUsername, setSelectedUsername] = useState<string>('');
   const [permDraft, setPermDraft] = useState<Record<string, { r: boolean; w: boolean }>>({});
 
   const topLevelKeys = useMemo(extractTopLevelKeys, []);
@@ -37,44 +41,44 @@ export default function PermissionSetting() {
 
   // 선택 사용자 현재 권한 → 대카테고리로 역산 표기
   useEffect(() => {
-    if (!selectedUserId) return;
-    const current = getUserPerms(selectedUserId);
+    if (!selectedUsername) return;
+    const current = getUserPerms(selectedUsername);
     const initial = topLevelKeys.reduce((acc, top) => {
-      const childKeys = Object.keys(VIEW_MAP).filter(v => v.startsWith(top));
+      const childKeys = Object.keys(VIEW_MAP).filter(v => v.startsWith(top + '>'));
       const hasRead  = childKeys.some(ck => current[ck]?.r) || !!current[top]?.r;
       const hasWrite = childKeys.some(ck => current[ck]?.w) || !!current[top]?.w;
       acc[top] = { r: !!hasRead, w: !!hasWrite };
       return acc;
     }, {} as Record<string, { r: boolean; w: boolean }>);
     setPermDraft(initial);
-  }, [selectedUserId, topLevelKeys]);
+  }, [selectedUsername, topLevelKeys]);
 
   if (!me || !isAdmin(me)) return <LockScreen />;
 
   return (
-    // 가로폭 70%로 축소 + 중앙 정렬
     <div className="p-4">
+      {/* 가로폭 약 30% 축소, 중앙 정렬 */}
       <div className="mx-auto w-[70%] space-y-4">
         <h1 className="text-xl font-semibold">권한 설정</h1>
 
-        {/* 사용자 선택 (이름 (전화)) */}
+        {/* 사용자 선택 (이름 (전화)) — value는 username */}
         <div>
           <label className="text-sm text-gray-600">사용자 선택</label>
           <select
             className="w-full border rounded p-2"
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value)}
+            value={selectedUsername}
+            onChange={(e) => setSelectedUsername(e.target.value)}
           >
             <option value="" disabled>사용자를 선택하세요</option>
             {users.map(u => (
-              <option key={u.id} value={u.id}>
+              <option key={u.username} value={u.username}>
                 {u.name}{u.phone ? ` (${u.phone})` : ''}
               </option>
             ))}
           </select>
         </div>
 
-        {selectedUserId && (
+        {selectedUsername && (
           <div className="overflow-auto border rounded">
             <table className="min-w-full text-sm">
               <thead className="bg-gray-100">
@@ -118,23 +122,22 @@ export default function PermissionSetting() {
               <button
                 className="px-3 py-2 border rounded"
                 onClick={() => {
-                  // 저장: 상위(top)도 직접 저장 + 하위 전체 자동 반영
+                  // 저장: 상위(top) 직접 저장 + 하위 전체 자동 반영
                   const merged: Record<string, { r: boolean; w: boolean }> = {};
-
                   topLevelKeys.forEach(top => {
                     const t = permDraft[top] ?? { r: false, w: false };
 
-                    // 1) 상위 키 자체 저장 (대카테고리 접근 허용)
+                    // 대카테고리 자체
                     merged[top] = { r: !!t.r, w: !!t.w };
 
-                    // 2) 하위 키 전체에 동일 권한 부여
+                    // 하위 전체
                     const childKeys = Object.keys(VIEW_MAP).filter(k => k.startsWith(top + '>'));
                     childKeys.forEach(ck => { merged[ck] = { r: !!t.r, w: !!t.w }; });
                   });
 
-                  setUserPerms(selectedUserId, merged);
+                  setUserPerms(selectedUsername, merged);
 
-                  // ✅ 권한 변경 브로드캐스트(같은 탭 포함)
+                  // (선택) 즉시 반영을 위한 브로드캐스트
                   try {
                     localStorage.setItem('erp_permissions_version', String(Date.now()));
                     window.dispatchEvent(new Event('erp:perms-updated'));
@@ -152,6 +155,7 @@ export default function PermissionSetting() {
     </div>
   );
 }
+
 
 
 
