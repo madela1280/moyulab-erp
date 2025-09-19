@@ -12,6 +12,8 @@ async function sha256(text: string) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
+type UserRow = { id: string; name: string; phone: string; username: string; pwHash: string; pwSalt: string; createdAt: number };
+
 export default function LoginPage() {
   const router = useRouter();
   const [userId, setUserId] = useState('');
@@ -22,9 +24,8 @@ export default function LoginPage() {
     try {
       const savedId = localStorage.getItem('erp_user');
       if (savedId) { setUserId(savedId); setRememberId(true); }
-      // 🚫 자동 로그인 없음 (sessionStorage 기반)
-      // 나갈 때 자동 로그아웃
-      const onHide = () => { sessionStorage.removeItem('erp_auth'); };
+      // 탭/창 나가면 자동 로그아웃 (session 기반)
+      const onHide = () => { sessionStorage.removeItem('erp_auth'); sessionStorage.removeItem('erp_user'); sessionStorage.removeItem('erp_role'); };
       window.addEventListener('pagehide', onHide);
       window.addEventListener('beforeunload', onHide);
       return () => {
@@ -36,22 +37,56 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     if (!userId || !password) { alert('아이디와 비밀번호를 입력하세요.'); return; }
-    if (userId !== ADMIN_ID_FIXED) { alert('관리자 ID가 아닙니다.'); return; }
 
-    const savedSalt = localStorage.getItem('admin_pw_salt');
-    const savedHash = localStorage.getItem('admin_pw_hash');
-    if (savedSalt && savedHash) {
-      const tryHash = await sha256(`${savedSalt}|${password}`);
-      if (tryHash !== savedHash) { alert('비밀번호가 올바르지 않습니다.'); return; }
+    // 1) 일반 사용자 목록에서 찾기 (로컬 저장된 사용자)
+    try {
+      const raw = localStorage.getItem('erp_users');
+      const list: UserRow[] = raw ? JSON.parse(raw) : [];
+
+      const found = list.find(u => u.username === userId.trim());
+      if (found) {
+        const tryHash = await sha256(`${found.pwSalt}|${password}`);
+        if (tryHash !== found.pwHash) { alert('아이디 또는 비밀번호가 올바르지 않습니다.'); return; }
+
+        // 로그인 성공 (일반 사용자)
+        if (rememberId) localStorage.setItem('erp_user', userId.trim());
+        else localStorage.removeItem('erp_user');
+
+        sessionStorage.setItem('erp_auth', '1');
+        sessionStorage.setItem('erp_user', userId.trim());
+        sessionStorage.setItem('erp_role', 'user');
+        router.replace('/');
+        return;
+      }
+    } catch {
+      // 무시하고 관리자 체크로 진행
     }
 
-    if (rememberId) localStorage.setItem('erp_user', userId);
-    else localStorage.removeItem('erp_user');
+    // 2) 관리자(고정 ID) 체크
+    if (userId.trim() === ADMIN_ID_FIXED) {
+      const savedSalt = localStorage.getItem('admin_pw_salt');
+      const savedHash = localStorage.getItem('admin_pw_hash');
 
-    // ✅ 세션 인증: 탭/창 닫거나 이동하면 사라짐
-    sessionStorage.setItem('erp_auth', '1');
+      if (!savedSalt || !savedHash) {
+        alert('관리자 비밀번호가 설정되지 않았습니다. 관리자 설정에서 먼저 비밀번호를 설정하세요.');
+        return;
+      }
+      const tryHash = await sha256(`${savedSalt}|${password}`);
+      if (tryHash !== savedHash) { alert('아이디 또는 비밀번호가 올바르지 않습니다.'); return; }
 
-    router.replace('/');
+      // 로그인 성공 (관리자)
+      if (rememberId) localStorage.setItem('erp_user', userId.trim());
+      else localStorage.removeItem('erp_user');
+
+      sessionStorage.setItem('erp_auth', '1');
+      sessionStorage.setItem('erp_user', userId.trim());
+      sessionStorage.setItem('erp_role', 'admin');
+      router.replace('/');
+      return;
+    }
+
+    // 3) 어디에도 없으면 실패
+    alert('아이디 또는 비밀번호가 올바르지 않습니다.');
   };
 
   return (
@@ -83,7 +118,6 @@ export default function LoginPage() {
     </div>
   );
 }
-
 
 
 
