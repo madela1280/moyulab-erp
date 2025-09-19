@@ -392,7 +392,7 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
                 {colsRender.map((c, idx) => {
                   const activeFilter = (filters[c]?.size ?? 0) > 0 || !!sortMap[c];
                   return (
-                    <th key={c} className="border px-2 py-[0.16rem] text-[0.56rem] relative select-none">
+                    <th ... className="border px-2 py-[0.16rem] text-[0.62rem] text-gray-700 relative select-none">
                       <div className="flex items-center justify-start gap-2">
                         <span className="whitespace-nowrap">{c}</span>
 
@@ -471,7 +471,7 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
                         style={{ background: style.bg, color: style.color }}
                       >
                         <input
-                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.056rem] bg-transparent border-0 outline-none focus:ring-0"
+                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-gray-800 bg-transparent border-0 outline-none focus:ring-0"
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;
