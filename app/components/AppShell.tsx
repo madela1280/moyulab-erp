@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import React, { useMemo, useRef, useState } from "react";
+import UserAdd from "../components/UserManagement/UserAdd";
+import AdminSettingCentered from "../components/UserManagement/AdminSettingCentered";
 
 import UnifiedManagement from "../components/UnifiedManagement";
 import NewSignup from "../components/NewSignup";
@@ -56,7 +58,8 @@ const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "기기관리>시밀래": DeviceSirilac,
   "기기관리>각시밀": DeviceGaksimil,
   "데이터 업로드>신규가입": NewSignup,
-  "사용자 관리>관리자 설정": AdminSetting,
+  "사용자 관리>사용자 추가": UserAdd,
+  "사용자 관리>관리자 설정": AdminSettingCentered,
 };
 
 export default function AppShell() {
