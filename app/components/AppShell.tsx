@@ -71,21 +71,29 @@ export const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "사용자 관리>권한설정": PermissionSetting,
 };
 
-// ✅ 공통 권한 게이트
+// 기존 PermissionGate를 아래로 교체
 function PermissionGate({ routeKey, children }: { routeKey: string; children: React.ReactNode }) {
   const me = getCurrentUser();
   if (!me) return <LockScreen />;
 
-  // ✅ 관리자 무조건 통과
+  // 관리자 통과
   if (isAdmin(me)) return <>{children}</>;
 
-  // 관리자 전용 라우트는 관리자 외 차단
+  // 관리자 전용 라우트 차단
   if (ADMIN_ONLY_KEYS.has(routeKey)) return <LockScreen />;
 
-  // 일반 권한 체크
-  if (!canRead(me.id, routeKey)) return <LockScreen />;
+  // 우선 정확히 체크
+  if (canRead(me.id, routeKey)) return <>{children}</>;
 
-  return <>{children}</>;
+  // 상위 카테고리 기준 방어: "기기관리" 클릭 등
+  const top = routeKey.split('>')[0];
+  if (canRead(me.id, top)) return <>{children}</>;
+
+  // 하위 카테고리 중 하나라도 읽기 권한이 있으면 진입 허용
+  const hasAnyChild = Object.keys(VIEW_MAP).some(k => k.startsWith(`${top}>`) && canRead(me.id, k));
+  if (hasAnyChild) return <>{children}</>;
+
+  return <LockScreen />;
 }
 
 export default function AppShell() {
