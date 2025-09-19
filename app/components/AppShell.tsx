@@ -26,7 +26,7 @@ import { canRead, getCurrentUser, ADMIN_ONLY_KEYS, isAdmin } from '@/app/lib/per
 
 type MenuNode = { label: string; children?: MenuNode[] };
 
-const MENUS: MenuNode[] = [
+export const MENUS: MenuNode[] = [
   { label: "사용자 관리", children: [{ label: "사용자 추가" }, { label: "권한설정" }, { label: "관리자 설정" }] },
   { label: "통합관리", children: [{ label: "통합관리" }, { label: "온라인" }, { label: "보건소" }, { label: "조리원" }] },
   {
