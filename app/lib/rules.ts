@@ -59,12 +59,11 @@ function toInt(n: any) { return Number.parseInt(String(n), 10); }
 function parseDateLocal(s: string | undefined): Date | null {
   const t = (s ?? '').toString().trim();
   if (!t) return null;
-  // 숫자만 뽑아서 Y,M,D 조합 (2025-09-19 / 2025.9.19 / 2025/9/19 모두 허용)
   const m = t.match(/\d+/g);
   if (!m || m.length < 3) return null;
   const y = toInt(m[0]); const mo = toInt(m[1]); const d = toInt(m[2]);
   if (!y || !mo || !d) return null;
-  return new Date(y, mo - 1, d); // 로컬(한국) 기준
+  return new Date(y, mo - 1, d); // 로컬 기준
 }
 function startOfDay(d: Date): Date { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 function diffDays(a: Date, b: Date): number {
@@ -78,9 +77,9 @@ function diffDays(a: Date, b: Date): number {
  * 2) 반납요청일 있음 -> "회수중"
  * 3) 종료일 기준
  *    - due - today ∈ [1,3] -> "만기3일전"
- *    - due - today >= 0     -> "대여중"    (오늘 포함)
+ *    - due - today >= 0     -> "대여중"  (오늘 포함)
  *    - due - today < 0      -> "만기지남"
- * 4) 종료일 없으면 공란 유지
+ * 4) 종료일 없으면 기존값 유지
  */
 export function computeStatusForRow(row: Row, today: Date = new Date()): string {
   const has = (k: string) => ((row[k] ?? '').toString().trim() !== '');
@@ -88,9 +87,9 @@ export function computeStatusForRow(row: Row, today: Date = new Date()): string 
   if (has('반납요청일')) return '회수중';
 
   const due = parseDateLocal(row['종료일']);
-  if (!due) return (row['상태'] ?? '').toString().trim(); // 존중: 종료일 없으면 기존값 유지
+  if (!due) return (row['상태'] ?? '').toString().trim();
 
-  const d = diffDays(due, startOfDay(today)); // (due - today) 일수
+  const d = diffDays(due, startOfDay(today));
   if (d >= 1 && d <= 3) return '만기3일전';
   if (d >= 0) return '대여중';
   return '만기지남';
@@ -98,15 +97,11 @@ export function computeStatusForRow(row: Row, today: Date = new Date()): string 
 
 export function applyStatusToRowInPlace(row: Row, today: Date = new Date()): boolean {
   const next = computeStatusForRow(row, today);
-  if ((row['상태'] ?? '') !== next) {
-    row['상태'] = next;
-    return true;
-  }
+  if ((row['상태'] ?? '') !== next) { row['상태'] = next; return true; }
   return false;
 }
 
 let _statusRecalcLock = false;
-/** 통합관리 전체의 "상태"를 재계산 후 변경 있으면 저장 */
 export function recomputeStatusesNow() {
   if (_statusRecalcLock) return;
   _statusRecalcLock = true;
@@ -116,7 +111,6 @@ export function recomputeStatusesNow() {
     const today = new Date();
     rows.forEach(r => { if (applyStatusToRowInPlace(r, today)) changed = true; });
     if (changed) {
-      // 저장 시 unified_rows_updated 이벤트 발생 → 그리드 자동 갱신
       localStorage.setItem(LS_UNIFIED_ROWS, JSON.stringify(rows));
       window.dispatchEvent(new Event('unified_rows_updated'));
     }
@@ -127,7 +121,7 @@ export function recomputeStatusesNow() {
 
 // ---- 기기 인덱스 (7개 카테고리 전체 스캔) ----
 export type DeviceInfo = {
-  구매렌탈?: string;  // '구매/렌탈' 값
+  구매렌탈?: string;  // '구매/렌탈'
   기종?: string;
   에러횟수?: string;
   제품?: string;      // 제품명
@@ -137,7 +131,6 @@ export function buildDeviceIndex(): Record<string, DeviceInfo> {
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i) || '';
-      // 기기관리 저장 키 추정: "device_rows:카테고리" 또는 "device_rows:기기관리>카테고리"
       if (!key.startsWith('device_rows:')) continue;
       const raw = localStorage.getItem(key);
       const arr = raw ? JSON.parse(raw) : [];
@@ -231,7 +224,7 @@ export function lookupDeviceMeta(systemId: string) {
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i) || '';
-      if (!key.startsWith('device_rows:')) continue;           // 기기관리 7개 카테고리 저장소
+      if (!key.startsWith('device_rows:')) continue;
       const raw = localStorage.getItem(key);
       const list = raw ? JSON.parse(raw) : [];
       if (!Array.isArray(list)) continue;
@@ -252,16 +245,48 @@ export function lookupDeviceMeta(systemId: string) {
   return null;
 }
 
+// ---- 기기관리 → 통합관리 메타 동기화 (핵심 추가) ----
+let _deviceSyncLock = false;
+export function syncDeviceMetaToUnifiedNow() {
+  if (_deviceSyncLock) return;
+  _deviceSyncLock = true;
+  try {
+    const idx = buildDeviceIndex();
+    const rows = loadUnifiedRows();
+    let changed = false;
+    rows.forEach(r => {
+      const before = JSON.stringify([r['구매/렌탈'], r['기종'], r['에러횟수'], r['제품']]);
+      applyAutoToRowInPlace(r, idx); // 안내분류/상태도 함께 방어적으로 갱신
+      const after  = JSON.stringify([r['구매/렌탈'], r['기종'], r['에러횟수'], r['제품']]);
+      if (before !== after) changed = true;
+    });
+    if (changed) {
+      localStorage.setItem(LS_UNIFIED_ROWS, JSON.stringify(rows));
+      window.dispatchEvent(new Event('unified_rows_updated'));
+    }
+  } finally {
+    _deviceSyncLock = false;
+  }
+}
+
 // ---- 자동 재계산 트리거: 저장/스토리지변경/주기적 ----
 if (typeof window !== 'undefined') {
-  const tick = () => recomputeStatusesNow();
-  window.addEventListener('unified_rows_updated', tick);
+  const tickStatus = () => recomputeStatusesNow();
+  const tickDevice = () => syncDeviceMetaToUnifiedNow();
+
+  window.addEventListener('unified_rows_updated', tickStatus);
+  window.addEventListener('device_rows_updated', tickDevice);
+
   window.addEventListener('storage', (e: StorageEvent) => {
-    if (!e.key || e.key === LS_UNIFIED_ROWS) tick();
+    if (!e.key) { tickStatus(); tickDevice(); return; }
+    if (e.key === LS_UNIFIED_ROWS) tickStatus();
+    if (e.key.startsWith('device_rows:')) tickDevice();
   });
-  // 주기적 재계산(30분마다) → 날짜가 바뀌면 자동 반영
-  setInterval(tick, 30 * 60 * 1000);
+
+  // 주기적 재계산(30분마다) → 날짜 바뀌거나 외부수정 시 자동 반영
+  setInterval(() => { tickStatus(); tickDevice(); }, 30 * 60 * 1000);
+
   // 초기 1회
-  setTimeout(tick, 0);
+  setTimeout(() => { tickStatus(); tickDevice(); }, 0);
 }
 

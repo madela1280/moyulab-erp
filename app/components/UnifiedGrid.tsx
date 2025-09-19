@@ -487,7 +487,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                   const activeFilter = (filters[c]?.size ?? 0) > 0 || !!sortMap[c];
                   const allowFilter = c !== '거래처분류'; // 거래처분류: 헤더 필터 아이콘 제거
                   return (
-                    <th key={c} className="border px-2 py-[0.28rem] relative select-none">
+                      <th key={c} className="border px-2 py-[0.2rem] text-[0.7rem] relative select-none">
                       <div className={`flex items-center gap-2 ${c==='계약자주소'?'justify-center':'justify-start'}`}>
                         <span className="whitespace-nowrap">{label(c)}</span>
 
@@ -559,14 +559,14 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                     return (
                       <td
                         key={ci}
-                        className={`border px-1 py-[0.234rem] ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}`}
+                        className={`border px-[0.5rem] py-[0.16rem] ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}`}
                         onMouseDown={() => startSel(rIdx, ci)}
                         onMouseEnter={() => extendSel(rIdx, ci)}
                         onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
                         style={{ background: style.bg, color: style.color }}
                       >
                         <input
-                          className="w-full px-1 py-[0.16rem] text-[0.81rem] bg-transparent border-0 outline-none focus:ring-0"
+                          className="w-full px-[0.25rem] py-[0.12rem] text-[0.7rem] bg-transparent border-0 outline-none focus:ring-0"
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;
