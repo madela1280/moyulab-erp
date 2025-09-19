@@ -566,7 +566,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                         style={{ background: style.bg, color: style.color }}
                       >
                         <input
-                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-gray-900 bg-transparent border-0 outline-none focus:ring-0"
+                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-black bg-transparent border-0 outline-none focus:ring-0"
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;
