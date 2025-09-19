@@ -392,7 +392,7 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
                 {colsRender.map((c, idx) => {
                   const activeFilter = (filters[c]?.size ?? 0) > 0 || !!sortMap[c];
                   return (
-                    <th key={c} className="border px-2 py-[0.2rem] text-[0.7rem] relative select-none">
+                    <th key={c} className="border px-2 py-[0.16rem] text-[0.56rem] relative select-none">
                       <div className="flex items-center justify-start gap-2">
                         <span className="whitespace-nowrap">{c}</span>
 
@@ -464,14 +464,14 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
                     return (
                       <td
                         key={ci}
-                        className={`border px-[0.5rem] py-[0.16rem] ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}`}
+                        className={`border px-[0.4rem] py-[0.128rem] ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}`}
                         onMouseDown={() => startSel(rIdx, ci)}
                         onMouseEnter={() => extendSel(rIdx, ci)}
                         onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
                         style={{ background: style.bg, color: style.color }}
                       >
                         <input
-                          className="w-full px-[0.25rem] py-[0.12rem] text-[0.7rem] bg-transparent border-0 outline-none focus:ring-0"
+                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.056rem] bg-transparent border-0 outline-none focus:ring-0"
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;

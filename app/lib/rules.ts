@@ -166,20 +166,26 @@ export function applyGuideToUnifiedRows() {
 }
 
 export function applyAutoToRowInPlace(row: Row, deviceIndex?: Record<string, DeviceInfo>) {
-  // 거래처 → 안내분류
+  // 거래처 → 안내분류 (있을 때만 채움, 없으면 그대로 둠)
   const vendor = (row['거래처분류'] ?? '').toString().trim();
   const g = loadGuideMap()[vendor];
   if (g) row['안내분류'] = g;
 
-  // 기기번호 → 기기정보
+  // 기기번호 → 기기정보 (없으면 '구매/렌탈','기종','에러횟수','제품'을 빈칸으로 초기화)
   const dev = (row['기기번호'] ?? '').toString().trim();
   const idx = deviceIndex || buildDeviceIndex();
   const info = dev ? idx[dev] : undefined;
+
+  const metaKeys: (keyof Row)[] = ['구매/렌탈','기종','에러횟수','제품'];
+
   if (info) {
-    if (info.구매렌탈) row['구매/렌탈'] = info.구매렌탈;
-    if (info.기종)     row['기종']      = info.기종;
-    if (info.에러횟수) row['에러횟수']  = info.에러횟수;
-    if (info.제품)     row['제품']      = info.제품;
+    row['구매/렌탈'] = (info.구매렌탈 ?? '').toString().trim();
+    row['기종']      = (info.기종 ?? '').toString().trim();
+    row['에러횟수']  = (info.에러횟수 ?? '').toString().trim();
+    row['제품']      = (info.제품 ?? '').toString().trim();
+  } else {
+    // ★ 핵심: 통합관리에서 기기번호를 바꿨는데 기기관리 인덱스에 없으면 메타를 비움
+    metaKeys.forEach(k => { if ((row[k] ?? '') !== '') row[k] = ''; });
   }
 
   // 상태 갱신
