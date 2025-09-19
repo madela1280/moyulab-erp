@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getCurrentUser, isAdmin, getUserPerms, setUserPerms } from '@/app/lib/permissions';
 import LockScreen from './LockScreen';
-import { VIEW_MAP } from '../AppShell';
+import { VIEW_MAP, MENUS } from '../AppShell';
 
 type User = { id: string; name: string; phone?: string };
 
@@ -19,15 +19,9 @@ function loadUsers(): User[] {
   }
 }
 
-// 대카테고리 키 추출
-function extractTopLevelKeys(viewMap: Record<string, any>): string[] {
-  const keys = Object.keys(viewMap);
-  const topLevels = new Set<string>();
-  keys.forEach(k => {
-    const top = k.split('>')[0];
-    topLevels.add(top);
-  });
-  return Array.from(topLevels);
+// MENUS에서 대카테고리 추출
+function extractTopLevelKeys(): string[] {
+  return MENUS.map(m => m.label).filter(label => label !== "사용자 관리"); // 사용자 관리 제외
 }
 
 export default function PermissionSetting() {
@@ -36,7 +30,7 @@ export default function PermissionSetting() {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [permDraft, setPermDraft] = useState<Record<string, { r: boolean; w: boolean }>>({});
 
-  const topLevelKeys = useMemo(() => extractTopLevelKeys(VIEW_MAP), []);
+  const topLevelKeys = useMemo(() => extractTopLevelKeys(), []);
 
   useEffect(() => {
     setUsers(loadUsers());
@@ -45,15 +39,16 @@ export default function PermissionSetting() {
   useEffect(() => {
     if (!selectedUserId) return;
     const current = getUserPerms(selectedUserId);
-    // 대카테고리만 초기화
-    const initial = topLevelKeys.reduce((acc, k) => {
-      // 만약 하위 route 중 하나라도 r/w true면 상위도 체크된 것으로 표시
-      const childKeys = Object.keys(VIEW_MAP).filter(v => v.startsWith(k));
+
+    // 대카테고리별 초기화
+    const initial = topLevelKeys.reduce((acc, top) => {
+      const childKeys = Object.keys(VIEW_MAP).filter(v => v.startsWith(top));
       const hasRead = childKeys.some(ck => current[ck]?.r);
       const hasWrite = childKeys.some(ck => current[ck]?.w);
-      acc[k] = { r: hasRead, w: hasWrite };
+      acc[top] = { r: hasRead, w: hasWrite };
       return acc;
     }, {} as Record<string, { r: boolean; w: boolean }>);
+
     setPermDraft(initial);
   }, [selectedUserId, topLevelKeys]);
 
@@ -76,7 +71,7 @@ export default function PermissionSetting() {
           <option value="" disabled>사용자를 선택하세요</option>
           {users.map(u => (
             <option key={u.id} value={u.id}>
-              {u.name ?? u.id} ({u.id})
+              {u.name}{u.phone ? ` (${u.phone})` : ""}
             </option>
           ))}
         </select>
@@ -128,7 +123,6 @@ export default function PermissionSetting() {
             <button
               className="px-3 py-2 border rounded"
               onClick={() => {
-                // 저장 시: 대카테고리 → 하위 전체에 적용
                 const newPerms: Record<string, { r: boolean; w: boolean }> = {};
                 topLevelKeys.forEach(top => {
                   const topVal = permDraft[top] ?? { r: false, w: false };
@@ -149,4 +143,5 @@ export default function PermissionSetting() {
     </div>
   );
 }
+
 
