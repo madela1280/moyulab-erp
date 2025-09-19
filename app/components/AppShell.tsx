@@ -22,7 +22,6 @@ import DeviceGaksimil from "./DeviceGaksimil";
 import PermissionSetting from './UserManagement/PermissionSetting';
 import LockScreen from './UserManagement/LockScreen';
 
-// 권한 유틸
 import { canRead, getCurrentUser, ADMIN_ONLY_KEYS, isAdmin } from '@/app/lib/permissions';
 
 type MenuNode = { label: string; children?: MenuNode[] };
@@ -51,7 +50,6 @@ const MENUS: MenuNode[] = [
   { label: "집계", children: [{ label: "매출", children: [{ label: "거래처별" }, { label: "기간별" }, { label: "유축기별" }] }] },
 ];
 
-// ⬇️ PermissionSetting이 VIEW_MAP을 참조할 수 있도록 export
 export const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "통합관리": UnifiedManagement,
   "통합관리>온라인": OnlineManagement,
@@ -70,29 +68,27 @@ export const VIEW_MAP: Record<string, React.ComponentType<any>> = {
 
   "사용자 관리>사용자 추가": UserAdd,
   "사용자 관리>관리자 설정": AdminSettingCentered,
-  "사용자 관리>권한설정": PermissionSetting, // ✅ 추가
+  "사용자 관리>권한설정": PermissionSetting,
 };
 
-// 공통 접근 게이트: 관리자 전용 + 읽기 권한
+// ✅ 공통 권한 게이트
 function PermissionGate({ routeKey, children }: { routeKey: string; children: React.ReactNode }) {
   const me = getCurrentUser();
   if (!me) return <LockScreen />;
 
-  // 관리자 전용 라우트 강제
-  if (ADMIN_ONLY_KEYS?.has(routeKey) && !isAdmin(me)) {
-    return <LockScreen />;
-  }
+  // 관리자 무조건 통과
+  if (isAdmin(me)) return <>{children}</>;
 
-  // 일반 읽기 권한 체크
-  if (!canRead(me.id, routeKey)) {
-    return <LockScreen />;
-  }
+  // 관리자 전용 라우트
+  if (ADMIN_ONLY_KEYS.has(routeKey)) return <LockScreen />;
+
+  // 일반 권한 체크
+  if (!canRead(me.id, routeKey)) return <LockScreen />;
 
   return <>{children}</>;
 }
 
 export default function AppShell() {
-  // 기본 랜딩은 통합관리
   const [openTop, setOpenTop] = useState<string>("통합관리");
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string>("통합관리");
@@ -182,5 +178,6 @@ export default function AppShell() {
     </div>
   );
 }
+
 
 

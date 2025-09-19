@@ -1,32 +1,41 @@
 'use client';
 
-export type RouteKey = string; // e.g. "통합관리", "통합관리>온라인", "데이터 업로드>신규가입"
+export type RouteKey = string; // "통합관리", "통합관리>온라인" 등
 
 export type RW = { r: boolean; w: boolean };
 export type PermissionMap = Record<RouteKey, RW>;
-export type AllUserPerms = Record<string, PermissionMap>; // userId -> per route
+export type AllUserPerms = Record<string, PermissionMap>; // userId -> 권한맵
 
 const PERM_KEY = 'erp_permissions';
-const AUTH_KEY = 'erp_auth';        // { id, name, isAdmin, ... } 형태라 가정
+const USER_KEY = 'erp_user';   // 로그인 시 ID 저장
 const ADMIN_ID = 'medela1280';
 
+// 현재 로그인 사용자 가져오기
 export function getCurrentUser() {
   try {
-    const raw = localStorage.getItem(AUTH_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+    const uid =
+      sessionStorage.getItem(USER_KEY) ||
+      localStorage.getItem(USER_KEY);
+
+    if (!uid) return null;
+    return { id: uid };
+  } catch {
+    return null;
+  }
 }
 
+// 관리자 여부 확인
 export function isAdmin(user?: { id?: string }) {
-  const u = user ?? getCurrentUser();
-  return !!u && u.id === ADMIN_ID;
+  return !!user && user.id === ADMIN_ID;
 }
 
 export function loadAllPerms(): AllUserPerms {
   try {
     const raw = localStorage.getItem(PERM_KEY);
     return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 
 export function saveAllPerms(all: AllUserPerms) {
@@ -45,32 +54,32 @@ export function setUserPerms(userId: string, perms: PermissionMap) {
 }
 
 export function canRead(userId: string, routeKey: RouteKey): boolean {
-  if (userId === ADMIN_ID) return true;
+  if (userId === ADMIN_ID) return true; // ✅ 관리자 무조건 통과
   const p = getUserPerms(userId)[routeKey];
   return !!p?.r;
 }
 
 export function canWrite(userId: string, routeKey: RouteKey): boolean {
-  if (userId === ADMIN_ID) return true;
+  if (userId === ADMIN_ID) return true; // ✅ 관리자 무조건 통과
   const p = getUserPerms(userId)[routeKey];
   return !!p?.w;
 }
 
-/** VIEW_MAP에서 자동으로 모든 routeKey(카테고리 및 서브카테고리) 추출 */
+// VIEW_MAP에서 카테고리 키 추출
 export function extractRouteKeysFromViewMap(viewMap: Record<RouteKey, any>): RouteKey[] {
   const keys = Object.keys(viewMap);
-  // 중복 제거
   return Array.from(new Set(keys));
 }
 
-/** 라벨 표시용: "통합관리>온라인" 을 ["통합관리","온라인"]로 나눠 보기 좋게 */
+// "통합관리>온라인" → "통합관리 > 온라인"
 export function prettyLabelOf(routeKey: RouteKey) {
   return routeKey.split('>').join(' > ');
 }
 
-// 관리자 전용 라우트 키 모음
+// 관리자 전용 라우트
 export const ADMIN_ONLY_KEYS = new Set<string>([
   "사용자 관리>권한설정",
   "사용자 관리>관리자 설정",
   "사용자 관리>사용자 추가",
 ]);
+
