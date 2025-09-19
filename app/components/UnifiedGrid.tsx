@@ -487,7 +487,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                   const activeFilter = (filters[c]?.size ?? 0) > 0 || !!sortMap[c];
                   const allowFilter = c !== '거래처분류'; // 거래처분류: 헤더 필터 아이콘 제거
                   return (
-                      <th ... className="border px-2 py-[0.16rem] text-[0.62rem] text-gray-700 relative select-none">
+                      <th key={c} className="border px-2 py-[0.16rem] text-[0.62rem] text-gray-700 relative select-none">
                       <div className={`flex items-center gap-2 ${c==='계약자주소'?'justify-center':'justify-start'}`}>
                         <span className="whitespace-nowrap">{label(c)}</span>
 

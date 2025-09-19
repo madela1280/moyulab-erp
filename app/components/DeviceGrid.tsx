@@ -392,7 +392,7 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
                 {colsRender.map((c, idx) => {
                   const activeFilter = (filters[c]?.size ?? 0) > 0 || !!sortMap[c];
                   return (
-                    <th ... className="border px-2 py-[0.16rem] text-[0.62rem] text-gray-700 relative select-none">
+                    <th key={c} className="border px-2 py-[0.16rem] text-[0.62rem] text-gray-700 relative select-none">
                       <div className="flex items-center justify-start gap-2">
                         <span className="whitespace-nowrap">{c}</span>
 
