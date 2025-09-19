@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import LockScreen from './LockScreen';
 
 const ADMIN_ID_FIXED = 'medela1280';
@@ -119,105 +119,107 @@ export default function UserAdd() {
     setStatus('삭제되었습니다.');
   };
 
-return (
-  <div className="p-4">
-    {/* 전체 폭 70%로 축소 + 가운데 정렬 */}
-    <div className="mx-auto w-[70%]">
-      <div className="grid gap-4 [grid-template-columns:0.35fr_0.65fr]">
-        {/* 좌: 사용자 추가 폼 / 우: 사용자 목록 */}
-        <h3 className="font-semibold mb-4">
-          {editIdx === null ? '사용자 추가' : '사용자 수정'}
-        </h3>
+  return (
+    <div className="p-4">
+      {/* 전체 폭 70%로 축소 + 가운데 정렬 */}
+      <div className="mx-auto w-[70%]">
+        <div className="grid gap-4 [grid-template-columns:0.35fr_0.65fr]">
+          {/* 좌: 사용자 추가 폼 */}
+          <div>
+            <h3 className="font-semibold mb-4">{editIdx === null ? '사용자 추가' : '사용자 수정'}</h3>
 
-        <div className="space-y-3">
-          <input
-            className="w-full border rounded px-3 py-2"
-            placeholder="이름"
-            value={name}
-            onChange={e => setName(e.target.value)}
-          />
-          <input
-            className="w-full border rounded px-3 py-2"
-            placeholder="전화번호"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-          />
-          <input
-            className="w-full border rounded px-3 py-2"
-            placeholder="아이디"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-          />
-          <input
-            type="password"
-            className="w-full border rounded px-3 py-2"
-            placeholder={editIdx === null ? "비밀번호" : "새 비밀번호(변경 시)"}
-            value={pw}
-            onChange={e => setPw(e.target.value)}
-          />
-          <input
-            type="password"
-            className="w-full border rounded px-3 py-2"
-            placeholder={editIdx === null ? "비밀번호 확인" : "새 비밀번호 확인"}
-            value={pw2}
-            onChange={e => setPw2(e.target.value)}
-          />
-        </div>
+            <div className="space-y-3">
+              <input
+                className="w-full border rounded px-3 py-2"
+                placeholder="이름"
+                value={name}
+                onChange={e => setName(e.target.value)}
+              />
+              <input
+                className="w-full border rounded px-3 py-2"
+                placeholder="전화번호"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+              />
+              <input
+                className="w-full border rounded px-3 py-2"
+                placeholder="아이디"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+              />
+              <input
+                type="password"
+                className="w-full border rounded px-3 py-2"
+                placeholder={editIdx === null ? "비밀번호" : "새 비밀번호(변경 시)"}
+                value={pw}
+                onChange={e => setPw(e.target.value)}
+              />
+              <input
+                type="password"
+                className="w-full border rounded px-3 py-2"
+                placeholder={editIdx === null ? "비밀번호 확인" : "새 비밀번호 확인"}
+                value={pw2}
+                onChange={e => setPw2(e.target.value)}
+              />
+            </div>
 
-        {status && (
-          <div
-            className={`text-sm mt-3 ${
-              status.includes('삭제') || status.includes('다릅니다')
-                ? 'text-red-600'
-                : 'text-green-600'
-            }`}
-          >
-            {status}
+            {status && (
+              <div
+                className={`text-sm mt-3 ${
+                  status.includes('삭제') || status.includes('다릅니다') ? 'text-red-600' : 'text-green-600'
+                }`}
+              >
+                {status}
+              </div>
+            )}
+
+            {/* 버튼 영역 30% 축소 */}
+            <div className="mt-4">
+              <div className="flex gap-2 scale-[0.7] origin-left">
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  {editIdx === null ? '추가' : '수정 저장'}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 bg-gray-100 rounded border hover:bg-gray-50"
+                >
+                  삭제
+                </button>
+                <button
+                  onClick={resetForm}
+                  className="px-4 py-2 bg-gray-100 rounded border hover:bg-gray-50"
+                >
+                  새로 입력
+                </button>
+              </div>
+            </div>
           </div>
-        )}
 
-        {/* 버튼 영역 30% 축소 */}
-        <div className="mt-4">
-          <div className="flex gap-2 scale-[0.7] origin-left">
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              {editIdx === null ? '추가' : '수정 저장'}
-            </button>
-            <button
-              onClick={handleDelete}
-              className="px-4 py-2 bg-gray-100 rounded border hover:bg-gray-50"
-            >
-              삭제
-            </button>
-            <button
-              onClick={resetForm}
-              className="px-4 py-2 bg-gray-100 rounded border hover:bg-gray-50"
-            >
-              새로 입력
-            </button>
+          {/* 우: 사용자 목록 */}
+          <div className="bg-white rounded-lg shadow p-5">
+            <h3 className="font-semibold mb-4">사용자 목록</h3>
+            <div className="divide-y">
+              {rows.length === 0 && <div className="text-sm text-gray-500">등록된 사용자가 없습니다.</div>}
+              {rows.map((u, i) => (
+                <button
+                  key={u.id}
+                  onClick={() => pickForEdit(i)}
+                  className={`w-full text-left py-2 px-2 hover:bg-gray-50 ${i === editIdx ? 'bg-blue-50' : ''}`}
+                >
+                  <div className="font-medium">
+                    {u.name} <span className="text-gray-400 text-xs">({u.username})</span>
+                  </div>
+                  <div className="text-xs text-gray-500">{u.phone}</div>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-      {/* 목록 */}
-      <div className="bg-white rounded-lg shadow p-5">
-        <h3 className="font-semibold mb-4">사용자 목록</h3>
-        <div className="divide-y">
-          {rows.length === 0 && <div className="text-sm text-gray-500">등록된 사용자가 없습니다.</div>}
-          {rows.map((u, i) => (
-            <button key={u.id} onClick={()=>pickForEdit(i)}
-                    className={`w-full text-left py-2 px-2 hover:bg-gray-50 ${i===editIdx ? 'bg-blue-50' : ''}`}>
-              <div className="font-medium">{u.name} <span className="text-gray-400 text-xs">({u.username})</span></div>
-              <div className="text-xs text-gray-500">{u.phone}</div>
-            </button>
-          ))}
         </div>
       </div>
     </div>
   );
 }
+
