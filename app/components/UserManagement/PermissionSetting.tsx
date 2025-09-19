@@ -52,93 +52,108 @@ export default function PermissionSetting() {
   if (!me || !isAdmin(me)) return <LockScreen />;
 
   return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-xl font-semibold">권한 설정</h1>
+    // 가로폭 70%로 축소 + 중앙 정렬
+    <div className="p-4">
+      <div className="mx-auto w-[70%] space-y-4">
+        <h1 className="text-xl font-semibold">권한 설정</h1>
 
-      {/* 사용자 선택 (이름 (전화)) */}
-      <div>
-        <label className="text-sm text-gray-600">사용자 선택</label>
-        <select
-          className="w-full border rounded p-2"
-          value={selectedUserId}
-          onChange={(e) => setSelectedUserId(e.target.value)}
-        >
-          <option value="" disabled>사용자를 선택하세요</option>
-          {users.map(u => (
-            <option key={u.id} value={u.id}>
-              {u.name}{u.phone ? ` (${u.phone})` : ''}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {selectedUserId && (
-        <div className="overflow-auto border rounded">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="text-left px-3 py-2">대카테고리</th>
-                <th className="text-center px-3 py-2">읽기</th>
-                <th className="text-center px-3 py-2">쓰기</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topLevelKeys.map((key) => {
-                const val = permDraft[key] ?? { r: false, w: false };
-                return (
-                  <tr key={key} className="border-t">
-                    <td className="px-3 py-2">{key}</td>
-                    <td className="px-3 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={val.r}
-                        onChange={(e) => setPermDraft({ ...permDraft, [key]: { ...val, r: e.target.checked } })}
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={val.w}
-                        onChange={(e) => setPermDraft({ ...permDraft, [key]: { ...val, w: e.target.checked } })}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          <div className="p-3 flex justify-end gap-2">
-            <button
-              className="px-3 py-2 border rounded"
-              onClick={() => {
-                // 저장: 상위(top)도 직접 저장 + 하위 전체 자동 반영
-                const merged: Record<string, { r: boolean; w: boolean }> = {};
-
-                topLevelKeys.forEach(top => {
-                  const t = permDraft[top] ?? { r: false, w: false };
-
-                  // 1) 상위 키 자체 저장 (대카테고리 접근 허용용)
-                  merged[top] = { r: !!t.r, w: !!t.w };
-
-                  // 2) 하위 키 전체에 동일 권한 부여
-                  const childKeys = Object.keys(VIEW_MAP).filter(k => k.startsWith(top + '>'));
-                  childKeys.forEach(ck => { merged[ck] = { r: !!t.r, w: !!t.w }; });
-                });
-
-                // 사용자 기존 권한과 병합 저장(다른 사용자/다른 카테고리 보존)
-                setUserPerms(selectedUserId, merged);
-                alert('권한이 저장되었습니다.');
-              }}
-            >
-              저장
-            </button>
-          </div>
+        {/* 사용자 선택 (이름 (전화)) */}
+        <div>
+          <label className="text-sm text-gray-600">사용자 선택</label>
+          <select
+            className="w-full border rounded p-2"
+            value={selectedUserId}
+            onChange={(e) => setSelectedUserId(e.target.value)}
+          >
+            <option value="" disabled>사용자를 선택하세요</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.name}{u.phone ? ` (${u.phone})` : ''}
+              </option>
+            ))}
+          </select>
         </div>
-      )}
+
+        {selectedUserId && (
+          <div className="overflow-auto border rounded">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-left px-3 py-2">대카테고리</th>
+                  <th className="text-center px-3 py-2">읽기</th>
+                  <th className="text-center px-3 py-2">쓰기</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topLevelKeys.map((key) => {
+                  const val = permDraft[key] ?? { r: false, w: false };
+                  return (
+                    <tr key={key} className="border-t">
+                      <td className="px-3 py-2">{key}</td>
+                      <td className="px-3 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={val.r}
+                          onChange={(e) =>
+                            setPermDraft({ ...permDraft, [key]: { ...val, r: e.target.checked } })
+                          }
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={val.w}
+                          onChange={(e) =>
+                            setPermDraft({ ...permDraft, [key]: { ...val, w: e.target.checked } })
+                          }
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <div className="p-3 flex justify-end gap-2">
+              <button
+                className="px-3 py-2 border rounded"
+                onClick={() => {
+                  // 저장: 상위(top)도 직접 저장 + 하위 전체 자동 반영
+                  const merged: Record<string, { r: boolean; w: boolean }> = {};
+
+                  topLevelKeys.forEach(top => {
+                    const t = permDraft[top] ?? { r: false, w: false };
+
+                    // 1) 상위 키 자체 저장 (대카테고리 접근 허용)
+                    merged[top] = { r: !!t.r, w: !!t.w };
+
+                    // 2) 하위 키 전체에 동일 권한 부여
+                    const childKeys = Object.keys(VIEW_MAP).filter(k => k.startsWith(top + '>'));
+                    childKeys.forEach(ck => { merged[ck] = { r: !!t.r, w: !!t.w }; });
+                  });
+
+                  setUserPerms(selectedUserId, merged);
+
+                  // ✅ 권한 변경 브로드캐스트(같은 탭 포함)
+                  try {
+                    localStorage.setItem('erp_permissions_version', String(Date.now()));
+                    window.dispatchEvent(new Event('erp:perms-updated'));
+                  } catch {}
+
+                  alert('권한이 저장되었습니다.');
+                }}
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+
 
 
 

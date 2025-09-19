@@ -1,7 +1,7 @@
 'use client';
 
 import Image from "next/image";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import UserAdd from "./UserManagement/UserAdd";
 import AdminSettingCentered from "./UserManagement/AdminSettingCentered";
@@ -75,9 +75,24 @@ export const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "사용자 관리>권한설정": PermissionSetting,
 };
 
-// ✅ 공통 권한 게이트 (정확키/부모키 모두 허용)
+// ✅ 권한 게이트: 권한 변경 브로드캐스트 수신 시 재평가
 function PermissionGate({ routeKey, children }: { routeKey: string; children: React.ReactNode }) {
+  const [, force] = useState(0);            // 리렌더 트리거
   const me = getCurrentUser();
+
+  useEffect(() => {
+    const bump = () => force(v => v + 1);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'erp_permissions' || e.key === 'erp_permissions_version') bump();
+    };
+    window.addEventListener('erp:perms-updated', bump as EventListener);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('erp:perms-updated', bump as EventListener);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
   if (!me) return <LockScreen />;
 
   // 관리자 무조건 통과
@@ -127,7 +142,7 @@ export default function AppShell() {
             <h1 className="text-xl font-bold text-gray-700">Moulab Rental ERP</h1>
           </div>
 
-        {/* 대카테고리 */}
+          {/* 대카테고리 */}
           <nav className="hidden md:flex items-center gap-[2.4rem] ml-[380px]">
             {MENUS.map((m) => (
               <div
@@ -187,6 +202,7 @@ export default function AppShell() {
     </div>
   );
 }
+
 
 
 
