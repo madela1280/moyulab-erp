@@ -19,6 +19,12 @@ import DeviceFreestyle from "./DeviceFreestyle";
 import DeviceSirilac from "./DeviceSirilac";
 import DeviceGaksimil from "./DeviceGaksimil";
 
+import PermissionSetting from './UserManagement/PermissionSetting';
+import LockScreen from './UserManagement/LockScreen';
+
+// 권한 유틸
+import { canRead, getCurrentUser, ADMIN_ONLY_KEYS, isAdmin } from '@/app/lib/permissions';
+
 type MenuNode = { label: string; children?: MenuNode[] };
 
 const MENUS: MenuNode[] = [
@@ -45,11 +51,13 @@ const MENUS: MenuNode[] = [
   { label: "집계", children: [{ label: "매출", children: [{ label: "거래처별" }, { label: "기간별" }, { label: "유축기별" }] }] },
 ];
 
-const VIEW_MAP: Record<string, React.ComponentType<any>> = {
+// ⬇️ PermissionSetting이 VIEW_MAP을 참조할 수 있도록 export
+export const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "통합관리": UnifiedManagement,
   "통합관리>온라인": OnlineManagement,
   "통합관리>보건소": HealthCenterManagement,
   "통합관리>조리원": PostpartumManagement,
+
   "기기관리>심포니": DeviceSymphony,
   "기기관리>락티나": DeviceLactina,
   "기기관리>스윙": DeviceSwing,
@@ -57,10 +65,31 @@ const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "기기관리>프리스타일": DeviceFreestyle,
   "기기관리>시밀래": DeviceSirilac,
   "기기관리>각시밀": DeviceGaksimil,
+
   "데이터 업로드>신규가입": NewSignup,
+
   "사용자 관리>사용자 추가": UserAdd,
-  "사용자 관리>관리자 설정": AdminSettingCentered, // 중앙정렬된 관리자 설정
+  "사용자 관리>관리자 설정": AdminSettingCentered,
+  "사용자 관리>권한설정": PermissionSetting, // ✅ 추가
 };
+
+// 공통 접근 게이트: 관리자 전용 + 읽기 권한
+function PermissionGate({ routeKey, children }: { routeKey: string; children: React.ReactNode }) {
+  const me = getCurrentUser();
+  if (!me) return <LockScreen />;
+
+  // 관리자 전용 라우트 강제
+  if (ADMIN_ONLY_KEYS?.has(routeKey) && !isAdmin(me)) {
+    return <LockScreen />;
+  }
+
+  // 일반 읽기 권한 체크
+  if (!canRead(me.id, routeKey)) {
+    return <LockScreen />;
+  }
+
+  return <>{children}</>;
+}
 
 export default function AppShell() {
   // 기본 랜딩은 통합관리
@@ -81,7 +110,7 @@ export default function AppShell() {
   const pillIdle = "bg-white border-gray-300 text-gray-700 hover:bg-gray-50";
   const pillActive = "bg-[#e7eef8] border-[#b7c4dd] text-[#2b4a7f] font-medium";
 
-  const ActiveView = VIEW_MAP[activeKey] ?? UnifiedManagement;
+  const ActiveView = (VIEW_MAP[activeKey] ?? UnifiedManagement) as React.ComponentType<any>;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -146,9 +175,12 @@ export default function AppShell() {
 
       {/* 본문 */}
       <main className="p-6">
-        <ActiveView />
+        <PermissionGate routeKey={activeKey}>
+          <ActiveView />
+        </PermissionGate>
       </main>
     </div>
   );
 }
+
 
