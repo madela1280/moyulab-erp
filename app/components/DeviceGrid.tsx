@@ -326,12 +326,12 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
 
         <div className="ml-3 flex items-center gap-2">
           <button
-            className={`px-3 py-1.5 text-sm border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
+            className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
             onClick={() => setFilterMode(v => !v)}
           >필터</button>
 
           <button
-            className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
             onClick={() => {
               const header = colsRender.join(',');
               const body = data.map(r =>
@@ -355,7 +355,7 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
 
         <div className="ml-auto flex items-center gap-2">
           <button
-            className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
             onClick={() => {
               const next = rows.concat(
                 Array.from({ length: 10 }, () => Object.fromEntries(colsRender.map(c => [c, ''])))
@@ -364,11 +364,11 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
             }}
           >행 10 추가</button>
 
-          <button className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
 
-          <button className={`px-3 py-1.5 text-sm border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`} onClick={() => setReorderMode(v => !v)}>열 이동 모드</button>
+          <button className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`} onClick={() => setReorderMode(v => !v)}>열 이동 모드</button>
 
-          <button className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
         </div>
       </div>
 
@@ -471,7 +471,7 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
                         style={{ background: style.bg, color: style.color }}
                       >
                         <input
-                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-gray-800 bg-transparent border-0 outline-none focus:ring-0"
+                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-gray-900 bg-transparent border-0 outline-none focus:ring-0"
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;
@@ -608,7 +608,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
   const [mode,setMode]=useState<'bg'|'text'>('bg');
   return (
     <div className="relative">
-      <button className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50" onClick={()=>setOpen(v=>!v)}>칼라</button>
+      <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={()=>setOpen(v=>!v)}>칼라</button>
       {open && (
         <div className="absolute z-40 mt-2 w-[220px] bg-white border rounded shadow p-3">
           <div className="flex gap-3 mb-2 text-sm">
@@ -644,3 +644,4 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+

@@ -377,13 +377,13 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         {isUnified && (
           <>
             <button
-              className="ml-3 px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+              className="ml-3 px-2 py-1 text-xs border rounded hover:bg-gray-50"
               onClick={()=>setShowGuide(true)}
               title="거래처→안내분류 규칙 관리"
             >안내분류</button>
 
             <button
-              className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+              className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
               onClick={()=>setShowCategory(true)}
               title="거래처→온라인/보건소/조리원 규칙 관리"
             >분류</button>
@@ -393,7 +393,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         {isChildView && (
           <div className="relative">
             <button
-              className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+              className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
               onClick={()=>setMoveOpen(v=>!v)}
               title="체크한 행을 선택 카테고리로 이동"
             >이동</button>
@@ -420,12 +420,12 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
         <div className="ml-3 flex items-center gap-2">
           <button
-            className={`px-3 py-1.5 text-sm border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
+            className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
             onClick={() => setFilterMode(v => !v)}
           >필터</button>
 
           <button
-            className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
             onClick={() => {
               const header = colsRender.join(',');
               const body = data.map(r =>
@@ -449,7 +449,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
         <div className="ml-auto flex items-center gap-2">
           <button
-            className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
             onClick={() => {
               const next = rows.concat(
                 Array.from({ length: 10 }, () => Object.fromEntries(colsRender.map(c => [c, ''])))
@@ -458,11 +458,11 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
             }}
           >행 10 추가</button>
 
-          <button className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
 
-          <button className={`px-3 py-1.5 text-sm border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`} onClick={() => setReorderMode(v => !v)}>열 이동 모드</button>
+          <button className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`} onClick={() => setReorderMode(v => !v)}>열 이동 모드</button>
 
-          <button className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
         </div>
       </div>
 
@@ -487,7 +487,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                   const activeFilter = (filters[c]?.size ?? 0) > 0 || !!sortMap[c];
                   const allowFilter = c !== '거래처분류'; // 거래처분류: 헤더 필터 아이콘 제거
                   return (
-                      <th key={c} className="border px-2 py-[0.16rem] text-[0.62rem] text-gray-700 relative select-none">
+                      <th key={c} className="border px-2 py-[0.16rem] text-[0.74rem] text-gray-700 relative select-none">
                       <div className={`flex items-center gap-2 ${c==='계약자주소'?'justify-center':'justify-start'}`}>
                         <span className="whitespace-nowrap">{label(c)}</span>
 
@@ -566,7 +566,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                         style={{ background: style.bg, color: style.color }}
                       >
                         <input
-                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-gray-800 bg-transparent border-0 outline-none focus:ring-0"
+                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-gray-900 bg-transparent border-0 outline-none focus:ring-0"
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;
@@ -715,7 +715,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
   const TEXT_COLORS = ['#1F2937','#0F766E','#1D4ED8','#B91C1C','#6D28D9','#047857','#DC2626','#111827'];
   return (
     <div className="relative">
-      <button className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50" onClick={()=>setOpen(v=>!v)}>칼라</button>
+      <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={()=>setOpen(v=>!v)}>칼라</button>
       {open && (
         <div className="absolute z-40 mt-2 w-[220px] bg-white border rounded shadow p-3">
           <div className="flex gap-3 mb-2 text-sm">
@@ -751,6 +751,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
