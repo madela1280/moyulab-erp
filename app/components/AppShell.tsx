@@ -76,10 +76,10 @@ function PermissionGate({ routeKey, children }: { routeKey: string; children: Re
   const me = getCurrentUser();
   if (!me) return <LockScreen />;
 
-  // 관리자 무조건 통과
+  // ✅ 관리자 무조건 통과
   if (isAdmin(me)) return <>{children}</>;
 
-  // 관리자 전용 라우트
+  // 관리자 전용 라우트는 관리자 외 차단
   if (ADMIN_ONLY_KEYS.has(routeKey)) return <LockScreen />;
 
   // 일반 권한 체크
@@ -178,6 +178,7 @@ export default function AppShell() {
     </div>
   );
 }
+
 
 
 
