@@ -119,13 +119,15 @@ export default function UserAdd() {
     setStatus('삭제되었습니다.');
   };
 
- return (
+return (
   <div className="p-4">
     {/* 전체 폭 70%로 축소 + 가운데 정렬 */}
     <div className="mx-auto w-[70%]">
       <div className="grid gap-4 [grid-template-columns:0.35fr_0.65fr]">
         {/* 좌: 사용자 추가 폼 / 우: 사용자 목록 */}
-        <h3 className="font-semibold mb-4">{editIdx === null ? '사용자 추가' : '사용자 수정'}</h3>
+        <h3 className="font-semibold mb-4">
+          {editIdx === null ? '사용자 추가' : '사용자 수정'}
+        </h3>
 
         <div className="space-y-3">
           <input
@@ -165,7 +167,9 @@ export default function UserAdd() {
         {status && (
           <div
             className={`text-sm mt-3 ${
-              status.includes('삭제') || status.includes('다릅니다') ? 'text-red-600' : 'text-green-600'
+              status.includes('삭제') || status.includes('다릅니다')
+                ? 'text-red-600'
+                : 'text-green-600'
             }`}
           >
             {status}
