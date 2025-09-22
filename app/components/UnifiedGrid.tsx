@@ -38,6 +38,10 @@ const CHECKBOX_W = 28;
 const BG_COLORS = ['#FDE68A','#BBF7D0','#BFDBFE','#FCA5A5','#F5D0FE','#DDD6FE','#FECACA','#D1FAE5'];
 const TEXT_COLORS = ['#111827','#EF4444','#2563EB','#16A34A','#F97316','#7C3AED','#6B7280','#8B5E3C'];
 
+/* ▼ 날짜 필터 지원: 연/월 토큰 */
+const DATE_COLS = new Set(['택배발송일','시작일','종료일','반납요청일','반납완료일','신청일']);
+const isYMD = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+
 function storageKeyFor(viewId: string) {
   return viewId === '통합관리' ? LS_UNIFIED_ROWS : CAT_PREFIX + viewId;
 }
@@ -214,13 +218,33 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
   const uniqueValues = (col: string) => {
     const vals = new Set<string>();
-    rows.forEach(r => vals.add((r[col] ?? '').toString()));
+    if (DATE_COLS.has(col)) {
+      rows.forEach(r => {
+        const v = (r[col] ?? '').toString();
+        if (isYMD(v)) {
+          vals.add(v.slice(0, 4));  // YYYY
+          vals.add(v.slice(0, 7));  // YYYY-MM
+        } else if (v) {
+          vals.add(v);
+        }
+      });
+    } else {
+      rows.forEach(r => vals.add((r[col] ?? '').toString()));
+    }
     return Array.from(vals).sort();
   };
 
   const filteredRows = useMemo(() => {
     const activeCols = Object.keys(filters).filter(c => (filters[c]?.size ?? 0) > 0);
-    let base = rows.filter(r => activeCols.every(c => filters[c]!.has((r[c] ?? '').toString())));
+    let base = rows.filter(r => activeCols.every(c => {
+      const val = (r[c] ?? '').toString();
+      const set = filters[c]!;
+      if (DATE_COLS.has(c) && isYMD(val)) {
+        for (const tok of set) { if (val.startsWith(tok)) return true; }
+        return false;
+      }
+      return set.has(val);
+    }));
     const lastSortedCol = Object.keys(sortMap).find(c => !!sortMap[c]);
     if (lastSortedCol) {
       const dir = sortMap[lastSortedCol];
@@ -332,7 +356,14 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewId, colsRender.join('|')]);
 
-  const data = filteredRows;
+  /* ▼ 렌더 데이터: 필터 후에도 표 높이 유지(빈 행 보충) */
+  const data = useMemo(() => {
+    const minTarget = Math.max(rows.length, BLANK_ROWS);
+    if (filteredRows.length >= minTarget) return filteredRows;
+    const extra = Array.from({ length: minTarget - filteredRows.length },
+      () => Object.fromEntries(colsRender.map(c => [c, ''])));
+    return filteredRows.concat(extra);
+  }, [filteredRows, rows.length, colsRender]);
 
   // ---- 새 버튼/모달 상태 ----
   const [showGuide, setShowGuide] = useState(false);
@@ -421,7 +452,13 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         <div className="ml-3 flex items-center gap-2">
           <button
             className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
-            onClick={() => setFilterMode(v => !v)}
+            onClick={() => {
+              setFilterMode(v => {
+                const next = !v;
+                if (!next) { setFilters({}); setSortMap({}); setOpenFilterCol(null); }
+                return next;
+              });
+            }}
           >필터</button>
 
           <button
@@ -485,7 +522,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
                 {colsRender.map((c, idx) => {
                   const activeFilter = (filters[c]?.size ?? 0) > 0 || !!sortMap[c];
-                  const allowFilter = c !== '거래처분류'; // 거래처분류: 헤더 필터 아이콘 제거
+                  const allowFilter = true;
                   return (
                       <th key={c} className="border px-2 py-[0.16rem] text-[0.74rem] text-gray-700 relative select-none">
                       <div className={`flex items-center gap-2 ${c==='계약자주소'?'justify-center':'justify-start'}`}>
@@ -751,6 +788,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
