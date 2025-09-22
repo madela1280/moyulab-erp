@@ -111,7 +111,7 @@ export default function FindPanel({
   useEffect(() => {
     try {
       // 경로: app/components/FindPanel.tsx -> ../../workers/findWorker.ts
-      const w = new Worker(new URL('../../workers/findWorker.ts', import.meta.url));
+      const w = new Worker(new URL('../workers/findWorker.ts', import.meta.url));
       workerRef.current = w;
       w.onmessage = (e: MessageEvent<{ total: number; hits: Hit[] }>) => {
         setTotal(e.data.total);
