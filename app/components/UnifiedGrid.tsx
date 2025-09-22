@@ -259,16 +259,20 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   }, [rows, filters, sortMap]);
 
   /** 드래그 선택 & 복사 */
-  const tableHostRef = useRef<HTMLDivElement>(null);
-  const [sel, setSel] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
-  const [hl, setHl] = useState<{ r:number; c:number } | null>(null);
-  const [draggingSel, setDraggingSel] = useState(false);
-  const isSelected = (r: number, c: number) => {
-    if (!sel) return false;
-    const [r1, r2] = [Math.min(sel.r1, sel.r2), Math.max(sel.r1, sel.r2)];
-    const [c1, c2] = [Math.min(sel.c1, sel.c2), Math.max(sel.c1, sel.c2)];
-    return r >= r1 && r <= r2 && c >= c1 && c <= c2;
-  };
+const tableHostRef = useRef<HTMLDivElement>(null);
+
+// ▼ 선택 및 찾기 상태
+const [sel, setSel] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
+const [draggingSel, setDraggingSel] = useState(false);
+const [hl, setHl] = useState<{ r: number; c: number } | null>(null);   // 하이라이트 좌표
+const [showFind, setShowFind] = useState(false);                       // 찾기 패널 표시 여부
+
+const isSelected = (r: number, c: number) => {
+  if (!sel) return false;
+  const [r1, r2] = [Math.min(sel.r1, sel.r2), Math.max(sel.r1, sel.r2)];
+  const [c1, c2] = [Math.min(sel.c1, sel.c2), Math.max(sel.c1, sel.c2)];
+  return r >= r1 && r <= r2 && c >= c1 && c <= c2;
+};
   const startSel = (r: number, c: number) => { setSel({ r1: r, c1: c, r2: r, c2: c }); setDraggingSel(true); };
   const extendSel = (r: number, c: number) => { if (draggingSel) setSel(s => (s ? { ...s, r2: r, c2: c } : s)); };
   useEffect(() => {
