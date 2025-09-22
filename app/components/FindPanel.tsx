@@ -286,7 +286,7 @@ export default function FindPanel({
             className="w-full border rounded px-2 py-1 text-sm"
             placeholder="찾을 내용"
             value={query}
-            onChange={(e)=>{ setQuery(e.target.value); lastKeyRef.current=''; }} {/* 입력 시 캐시 무효화 */}
+            onChange={(e)=>{ setQuery(e.target.value); lastKeyRef.current=''; }}
             onKeyDown={(e)=>{ if (e.key==='Enter') onFindNext(); }}
           />
           <div className="flex flex-wrap gap-3 text-xs">
