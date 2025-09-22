@@ -306,9 +306,6 @@ const isSelected = (r: number, c: number) => {
   }, [sel, filteredRows, colsRender]);
 
  // ▼ 찾기 기능 상태
-const [showFind, setShowFind] = useState(false);
-const [hl, setHl] = useState<{ r: number; c: number } | null>(null); // ★ 추가
-
 const jumpTo = (r: number, c: number) => {
   setSel({ r1: r, c1: c, r2: r, c2: c });
   const host = tableHostRef.current;
