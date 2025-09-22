@@ -283,48 +283,25 @@ export default function FindPanel({
         {/* 검색어 & 옵션 */}
         <div className="space-y-2">
           <input
-            className="w-full border rounded px-2 py-1 text-sm"
-            placeholder="찾을 내용"
-            value={query}
-            onChange={(e)=> {
-               const val = e.target.value;
-               setQuery(val);
-               setHits([]);      // ★ 이전 결과 지우기
-               setTotal(0);
-               setCurIdx(-1);
-               lastKeyRef.current = '';
-             }}
+              className="w-full border rounded px-2 py-1 text-sm"
+              placeholder="찾을 내용"
+              value={query}
+              onChange={(e) => {
+                 const v = e.target.value;
+                 setQuery(v);
+                 // 이전 결과/포커스/건수 초기화 → 다음찾기 누르면 새로 검색 시드
+                 setHits([]);
+                 setTotal(0);
+                 setCurIdx(-1);
+                 // 이전 하이라이트 제거
+                 onHighlight?.(Number.NaN as any, Number.NaN as any);
+               }}
+               onKeyDown={(e) => { if (e.key === 'Enter') onFindNext(); }}
+         />
 
             onKeyDown={(e)=>{ if (e.key==='Enter') onFindNext(); }}
           />
-          <div className="flex flex-wrap gap-3 text-xs">
-            <label className="inline-flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={opts.caseSensitive}
-                onChange={(e)=>{ setOpts(v=>({ ...v, caseSensitive:e.target.checked })); lastKeyRef.current=''; }}
-              />
-              대소문자 구분
-            </label>
-            <label className="inline-flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={opts.wholeCell}
-                onChange={(e)=>{ setOpts(v=>({ ...v, wholeCell:e.target.checked })); lastKeyRef.current=''; }}
-              />
-              전체 일치
-            </label>
-            <label className="inline-flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={opts.wildcard}
-                onChange={(e)=>{ setOpts(v=>({ ...v, wildcard:e.target.checked })); lastKeyRef.current=''; }}
-              />
-              와일드카드(*,?)
-            </label>
-          </div>
-        </div>
-
+          
         {/* 액션 */}
         <div className="flex items-center gap-2">
           <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindAll}>
