@@ -354,9 +354,8 @@ export default function FindPanel({
   <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={handleClose}>
     닫기
   </button>
+ </div>
 </div>
-</div>  {/* .p-3 space-y-3 닫힘 */}
-</div>  {/* 패널 컨테이너 닫힘 */}
 );
 }
- 
+
