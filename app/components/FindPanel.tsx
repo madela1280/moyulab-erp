@@ -7,20 +7,14 @@ type Row = Record<string, string>;
 type Props = {
   rows: Row[];
   columns: string[];
-  /** 체크된 행 맵 (rIdx:true). 현재 요구사항엔 필수는 아니지만 기존 호환 위해 둠 */
   checked: Record<number, boolean>;
-  /** 부모의 컬럼 체크 상태 공유/유지용 */
   checkedCols: string[];
-  onChangeCheckedCols: (cols: string[]) => void;   // ✅ 이름 통일
-  /** 해당 셀로 점프(스크롤/셀 선택) */
+  onChangeCheckedCols: (cols: string[]) => void;
   onJump: (r: number, c: number) => void;
-  /** 가로/세로 하이라이트 변경 (r,c) 또는 null */
   onHighlight?: (r: number, c: number) => void;
-  /** 닫기 */
   onClose: () => void;
 };
 
-/** 엑셀-스타일 옵션 */
 type FindOptions = {
   caseSensitive: boolean;
   wholeCell: boolean;
@@ -33,7 +27,7 @@ const STORAGE_COLS = 'find_checkedCols';
 const STORAGE_QUERY = 'find_lastQuery';
 const STORAGE_OPTS = 'find_lastOpts';
 
-const ALLOWED = ['수취인명','연락처1','연락처2','계약자주소','기기번호']; // 허용 열
+const ALLOWED = ['수취인명','연락처1','연락처2','계약자주소','기기번호'];
 
 function normalizeCols(all: string[]) {
   return all.filter(c => ALLOWED.includes(c));
@@ -60,7 +54,6 @@ function makeMatcher(query: string, opts: FindOptions) {
   return (cell: string) => re.test(cell.toLowerCase());
 }
 
-/** 메인 스레드 검색 (워커 실패시 폴백) */
 function searchSync(rows: Row[], cols: string[], matcher: (s: string)=>boolean): Hit[] {
   const out: Hit[] = [];
   for (let r = 0; r < rows.length; r++) {
@@ -82,10 +75,12 @@ export default function FindPanel({
 
   const allowedCols = useMemo(() => normalizeCols(columns), [columns]);
 
+  // 초기 전체 체크 ON
   useEffect(() => {
-    if (!checkedCols.length || allowedCols.some(c => !checkedCols.includes(c))) {
+    if (!checkedCols.length) {
       onChangeCheckedCols(allowedCols);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowedCols.join('|')]);
 
   const [query, setQuery] = useState<string>(() => {
@@ -105,50 +100,21 @@ export default function FindPanel({
   const [total, setTotal] = useState<number>(0);
   const [curIdx, setCurIdx] = useState<number>(-1);
 
-  const workerRef = useRef<Worker | null>(null);
-  const useWorker = useRef<boolean>(false);
-  useEffect(() => {
-    try {
-      const w = new Worker(new URL('../workers/findWorker.ts', import.meta.url));
-      workerRef.current = w;
-      useWorker.current = true;
-      w.onmessage = (e: MessageEvent<{ total: number; hits: Hit[] }>) => {
-        setTotal(e.data.total);
-        setHits(e.data.hits);
-        setCurIdx(e.data.hits.length ? 0 : -1);
-        if (e.data.hits.length && onHighlight) {
-          const h = e.data.hits[0];
-          onHighlight(h.r, h.c);
-          onJump(h.r, h.c);
-        }
-      };
-    } catch {
-      workerRef.current = null;
-      useWorker.current = false;
-    }
-    return () => { if (workerRef.current) workerRef.current.terminate(); workerRef.current = null; };
-  }, []);
-
   const doSearch = (q: string, cols: string[], options: FindOptions, focusFirst: boolean) => {
     if (!q.trim() || cols.length === 0) {
       setHits([]); setTotal(0); setCurIdx(-1);
-      if (onHighlight) onHighlight?.(Number.NaN as any, Number.NaN as any);
+      onHighlight?.(Number.NaN as any, Number.NaN as any);
       return;
     }
-    const payload = { rows, cols, query: q, options };
-    if (useWorker.current && workerRef.current) {
-      workerRef.current.postMessage(payload);
-    } else {
-      const matcher = makeMatcher(q, options);
-      const res = searchSync(rows, cols, matcher);
-      setHits(res);
-      setTotal(res.length);
-      setCurIdx(res.length ? 0 : -1);
-      if (res.length && focusFirst) {
-        const h = res[0];
-        onHighlight?.(h.r, h.c);
-        onJump(h.r, h.c);
-      }
+    const matcher = makeMatcher(q, options);
+    const res = searchSync(rows, cols, matcher);
+    setHits(res);
+    setTotal(res.length);
+    setCurIdx(res.length ? 0 : -1);
+    if (res.length && focusFirst) {
+      const h = res[0];
+      onHighlight?.(h.r, h.c);
+      onJump(h.r, h.c);
     }
   };
 
@@ -160,11 +126,14 @@ export default function FindPanel({
   const onFindNext = () => {
     const cols = allowedCols.filter(c => checkedCols.includes(c));
     if (!query.trim() || cols.length===0) return;
+
+    // ✅ hits가 비어있으면 바로 검색 실행
     if (hits.length === 0) {
       doSearch(query, cols, opts, true);
       return;
     }
     if (total === 0) return;
+
     let next = curIdx + 1;
     if (next >= hits.length) next = 0;
     setCurIdx(next);
@@ -219,11 +188,18 @@ export default function FindPanel({
     } catch {
       onChangeCheckedCols(allowedCols);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <div className="fixed z-50 w-[360px] rounded-lg border shadow bg-white" style={{ left: pos.x, top: pos.y }}>
-      <div className="cursor-move px-3 py-2 text-sm font-semibold bg-gray-100 border-b select-none" onMouseDown={onDragStart}>
+    <div
+      className="fixed z-50 w-[360px] rounded-lg border shadow bg-white"
+      style={{ left: pos.x, top: pos.y }}
+    >
+      <div
+        className="cursor-move px-3 py-2 text-sm font-semibold bg-gray-100 border-b select-none"
+        onMouseDown={onDragStart}
+      >
         찾기
       </div>
 
@@ -254,24 +230,42 @@ export default function FindPanel({
           />
           <div className="flex flex-wrap gap-3 text-xs">
             <label className="inline-flex items-center gap-1">
-              <input type="checkbox" checked={opts.caseSensitive} onChange={(e)=>setOpts(v=>({ ...v, caseSensitive:e.target.checked }))}/>
+              <input
+                type="checkbox"
+                checked={opts.caseSensitive}
+                onChange={(e)=>setOpts(v=>({ ...v, caseSensitive:e.target.checked }))}
+              />
               대소문자 구분
             </label>
             <label className="inline-flex items-center gap-1">
-              <input type="checkbox" checked={opts.wholeCell} onChange={(e)=>setOpts(v=>({ ...v, wholeCell:e.target.checked }))}/>
+              <input
+                type="checkbox"
+                checked={opts.wholeCell}
+                onChange={(e)=>setOpts(v=>({ ...v, wholeCell:e.target.checked }))}
+              />
               전체 일치
             </label>
             <label className="inline-flex items-center gap-1">
-              <input type="checkbox" checked={opts.wildcard} onChange={(e)=>setOpts(v=>({ ...v, wildcard:e.target.checked }))}/>
+              <input
+                type="checkbox"
+                checked={opts.wildcard}
+                onChange={(e)=>setOpts(v=>({ ...v, wildcard:e.target.checked }))}
+              />
               와일드카드(*,?)
             </label>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindAll}>모두 찾기</button>
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindNext}>다음 찾기</button>
-          <div className="ml-auto text-xs text-gray-600">건수: {total}{hits.length?` (${curIdx+1}/${hits.length})`:''}</div>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindAll}>
+            모두 찾기
+          </button>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindNext}>
+            다음 찾기
+          </button>
+          <div className="ml-auto text-xs text-gray-600">
+            건수: {total}{hits.length?` (${curIdx+1}/${hits.length})`:''}
+          </div>
         </div>
 
         <div className="max-h-48 overflow-auto border rounded">
@@ -312,12 +306,15 @@ export default function FindPanel({
         </div>
 
         <div className="flex justify-end">
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={handleClose}>닫기</button>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={handleClose}>
+            닫기
+          </button>
         </div>
       </div>
     </div>
   );
 }
+
 
 
 
