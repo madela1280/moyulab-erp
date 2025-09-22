@@ -375,10 +375,11 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
       {/* 표 */}
       <div className="p-2">
         <div
-          ref={tableHostRef}
-          tabIndex={0}
-          className="w-full max-h-[calc(100vh-220px)] overflow-auto border rounded outline-none"
-        >
+            ref={tableHostRef}
+            tabIndex={0}
+            /* ▼ 높이 조정: -220px → -180px */
+            className="w-full max-h-[calc(100vh-180px)] overflow-auto border rounded outline-none"
+       >
           <table className="min-w-[2200px] w-max text-sm border-collapse">
             <colgroup>
               <col style={{ width: CHECKBOX_W }} />
