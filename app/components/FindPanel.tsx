@@ -280,7 +280,7 @@ export default function FindPanel({
           </div>
         </div>
 
-       {/* 검색어 */}
+     {/* 검색어 */}
 <div className="space-y-2">
   <input
     className="w-full border rounded px-2 py-1 text-sm"
@@ -289,11 +289,10 @@ export default function FindPanel({
     onChange={(e) => {
       const v = e.target.value;
       setQuery(v);
-      // 이전 결과/포커스/건수 초기화 → 다음찾기 단독 시 새로 검색
+      // 입력 바뀌면 이전 결과/포커스 초기화 → '다음 찾기' 단독으로도 새 검색 가능
       setHits([]);
       setTotal(0);
       setCurIdx(-1);
-      // 이전 하이라이트 제거
       onHighlight?.(Number.NaN as any, Number.NaN as any);
     }}
     onKeyDown={(e) => { if (e.key === 'Enter') onFindNext(); }}
@@ -328,8 +327,7 @@ export default function FindPanel({
       </thead>
       <tbody>
         {hits.map((h, i) => {
-          const colName =
-            allowedCols.filter(c => checkedCols.includes(c))[h.c] ?? '';
+          const colName = allowedCols.filter(c => checkedCols.includes(c))[h.c] ?? '';
           const active = i === curIdx;
           return (
             <tr
@@ -357,6 +355,8 @@ export default function FindPanel({
     닫기
   </button>
 </div>
-</div>   {/* <- .p-3 space-y-3 닫힘 */}
-</div>     {/* <- 패널 컨테이너 닫힘 */}
-
+</div>  {/* .p-3 space-y-3 닫힘 */}
+</div>  {/* 패널 컨테이너 닫힘 */}
+);
+}
+ 
