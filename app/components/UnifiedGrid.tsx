@@ -261,6 +261,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   /** 드래그 선택 & 복사 */
   const tableHostRef = useRef<HTMLDivElement>(null);
   const [sel, setSel] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
+  const [hl, setHl] = useState<{ r:number; c:number } | null>(null);
   const [draggingSel, setDraggingSel] = useState(false);
   const isSelected = (r: number, c: number) => {
     if (!sel) return false;
@@ -501,22 +502,11 @@ const jumpTo = (r: number, c: number) => {
   {/* ▼ 찾기 버튼 + 패널 */}
   <div className="relative">
     <button
-      className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-      onClick={() => setShowFind(v => !v)}
-    >찾기</button>
+       className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+       onClick={() => setShowFind(true)}
+   >찾기</button>
 
-    {showFind && (
-      <div className="absolute left-0 top-8 z-40">
-        <FindPanel
-          rows={rows}
-          columns={colsRender}
-          checked={checked}
-          onJump={jumpTo}
-          onClose={() => setShowFind(false)}
-        />
-      </div>
-    )}
-  </div>
+     </div>
 </div>
         
         <div className="ml-auto flex items-center gap-2">
@@ -630,13 +620,16 @@ const jumpTo = (r: number, c: number) => {
                     const val = row[c] ?? '';
                     return (
                       <td
-                        key={ci}
-                        className={`border px-[0.4rem] py-[0.128rem] ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''} ${hl && (hl.r===rIdx || hl.c===ci) ? 'bg-sky-50' : ''}`}
-                        onMouseDown={() => startSel(rIdx, ci)}
-                        onMouseEnter={() => extendSel(rIdx, ci)}
-                        onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                        style={{ background: style.bg, color: style.color }}
+                         key={ci}
+                         className={`border px-[0.4rem] py-[0.128rem]
+                           ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}
+                           ${hl && (hl.r===rIdx || hl.c===ci) ? 'bg-sky-50' : ''}`}
+                         onMouseDown={() => startSel(rIdx, ci)}
+                         onMouseEnter={() => extendSel(rIdx, ci)}
+                         onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                         style={{ background: style.bg, color: style.color }}
                       >
+
                         <input
                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0"
                           value={val}
@@ -708,15 +701,16 @@ const jumpTo = (r: number, c: number) => {
 
       {/* 찾기 패널 */}
       {showFind && (
-        <FindPanel
-          rows={rows}
-          columns={colsRender}
-          checked={checked}
-          onJump={jumpTo}
-          onHighlight={(r,c)=>setHl({r,c})}
-          onClose={() => setShowFind(false)}
-        />
-      )}
+  <FindPanel
+    rows={rows}
+    columns={colsRender}
+    checked={checked}
+    onJump={jumpTo}
+    onHighlight={(r,c)=>setHl({r,c})}
+    onClose={() => { setShowFind(false); setHl(null); }}
+  />
+)}
+
     </div>
   );
 }
