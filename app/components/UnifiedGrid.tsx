@@ -462,58 +462,60 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
           </div>
         )}
 
-        <div className="ml-3 flex items-center gap-2">
-          <button
-            className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
-            onClick={() => {
-              setFilterMode(v => {
-                const next = !v;
-                if (!next) { setFilters({}); setSortMap({}); setOpenFilterCol(null); }
-                return next;
-              });
-            }}
-          >필터</button>
+      <div className="ml-3 flex items-center gap-2">
+  <button
+    className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
+    onClick={() => {
+      setFilterMode(v => {
+        const next = !v;
+        if (!next) { setFilters({}); setSortMap({}); setOpenFilterCol(null); }
+        return next;
+      });
+    }}
+  >필터</button>
 
-          <button
-            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-            onClick={() => {
-              const header = colsRender.join(',');
-              const body = data.map(r =>
-                colsRender.map(c => {
-                  const v = (r[c] ?? '').toString().replace(/"/g, '""');
-                  return /[",\n]/.test(v) ? `"${v}"` : v;
-                }).join(',')
-              ).join('\n');
-              const csv = header + '\n' + body;
-              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url; a.download = `${viewId}_export.csv`;
-              document.body.appendChild(a); a.click();
-              document.body.removeChild(a); URL.revokeObjectURL(url);
-            }}
-          >다운로드(엑셀)</button>
-        
-         <ColorMenu onApply={applyColor} />
+  <button
+    className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+    onClick={() => {
+      const header = colsRender.join(',');
+      const body = data.map(r =>
+        colsRender.map(c => {
+          const v = (r[c] ?? '').toString().replace(/"/g, '""');
+          return /[",\n]/.test(v) ? `"${v}"` : v;
+        }).join(',')
+      ).join('\n');
+      const csv = header + '\n' + body;
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${viewId}_export.csv`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    }}
+  >다운로드(엑셀)</button>
 
-         <div className="relative">
-             <button
-                   className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-                   onClick={() => setShowFind(v => !v)}
-             >찾기</button>
+  <ColorMenu onApply={applyColor} />
 
-            {showFind && (
-              <div className="absolute left-0 top-8 z-40">
-                 <FindPanel
-                     rows={rows}
-                     columns={colsRender}
-                     checked={checked}
-                     onJump={jumpTo}
-                     onClose={() => setShowFind(false)}
-                  />
-              </div>
-            )}
-        </div>
+  {/* ▼ 찾기 버튼 + 패널 */}
+  <div className="relative">
+    <button
+      className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+      onClick={() => setShowFind(v => !v)}
+    >찾기</button>
+
+    {showFind && (
+      <div className="absolute left-0 top-8 z-40">
+        <FindPanel
+          rows={rows}
+          columns={colsRender}
+          checked={checked}
+          onJump={jumpTo}
+          onClose={() => setShowFind(false)}
+        />
+      </div>
+    )}
+  </div>
+</div>
         
         <div className="ml-auto flex items-center gap-2">
           <button
