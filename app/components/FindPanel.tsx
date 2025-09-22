@@ -286,7 +286,15 @@ export default function FindPanel({
             className="w-full border rounded px-2 py-1 text-sm"
             placeholder="찾을 내용"
             value={query}
-            onChange={(e)=>{ setQuery(e.target.value); lastKeyRef.current=''; }}
+            onChange={(e)=> {
+               const val = e.target.value;
+               setQuery(val);
+               setHits([]);      // ★ 이전 결과 지우기
+               setTotal(0);
+               setCurIdx(-1);
+               lastKeyRef.current = '';
+             }}
+
             onKeyDown={(e)=>{ if (e.key==='Enter') onFindNext(); }}
           />
           <div className="flex flex-wrap gap-3 text-xs">
