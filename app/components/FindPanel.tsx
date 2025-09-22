@@ -11,7 +11,7 @@ type Props = {
   checked: Record<number, boolean>;
   /** 부모의 컬럼 체크 상태 공유/유지용 */
   checkedCols: string[];
-  onChangeCheckedCols: (cols: string[]) => void;
+  onChangeCheckedCols: (cols: string[]) => void;   // ✅ 이름 통일
   /** 해당 셀로 점프(스크롤/셀 선택) */
   onJump: (r: number, c: number) => void;
   /** 가로/세로 하이라이트 변경 (r,c) 또는 null */
@@ -36,12 +36,10 @@ const STORAGE_OPTS = 'find_lastOpts';
 const ALLOWED = ['수취인명','연락처1','연락처2','계약자주소','기기번호']; // 허용 열
 
 function normalizeCols(all: string[]) {
-  // 현재 뷰 컬럼 중 허용 리스트만
   return all.filter(c => ALLOWED.includes(c));
 }
 
 function wildcardToRegExp(input: string) {
-  // * → .* , ? → .
   const escaped = input.replace(/[.+^${}()|[\]\\]/g, '\\$&');
   return new RegExp('^' + escaped.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
 }
@@ -57,7 +55,6 @@ function makeMatcher(query: string, opts: FindOptions) {
         ? cell.includes(query)
         : cell.toLowerCase().includes(query.toLowerCase());
   }
-  // 와일드카드
   const re = wildcardToRegExp(opts.wholeCell ? query : `*${query}*`);
   if (opts.caseSensitive) return (cell: string) => re.test(cell);
   return (cell: string) => re.test(cell.toLowerCase());
@@ -80,26 +77,17 @@ function searchSync(rows: Row[], cols: string[], matcher: (s: string)=>boolean):
 export default function FindPanel({
   rows, columns, checked, checkedCols, onChangeCheckedCols, onJump, onHighlight, onClose
 }: Props) {
-  // 위치(드래그)
-  const [pos, setPos] = useState<{x:number;y:number}>(() => {
-    // 처음엔 버튼 근처에서 시작해도 되고, 좌상단 24,24
-    return { x: 24, y: 60 };
-  });
+  const [pos, setPos] = useState<{x:number;y:number}>({ x: 24, y: 60 });
   const draggingRef = useRef<{dx:number;dy:number} | null>(null);
 
-  // 열 목록(뷰에 존재하는 허용 열만)
   const allowedCols = useMemo(() => normalizeCols(columns), [columns]);
 
-  // 초기 전체 체크 ON (허용 열 모두)
   useEffect(() => {
-    // 만약 현재 checkedCols가 허용열과 달라서 비어있거나 일부면, 허용열 전체로 세팅
     if (!checkedCols.length || allowedCols.some(c => !checkedCols.includes(c))) {
       onChangeCheckedCols(allowedCols);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowedCols.join('|')]); // allowedCols 변하면 한번 동기화
+  }, [allowedCols.join('|')]);
 
-  // 검색어/옵션 저장 복원
   const [query, setQuery] = useState<string>(() => {
     try { return localStorage.getItem(STORAGE_QUERY) ?? ''; } catch { return ''; }
   });
@@ -113,17 +101,14 @@ export default function FindPanel({
   useEffect(() => { try { localStorage.setItem(STORAGE_QUERY, query); } catch {} }, [query]);
   useEffect(() => { try { localStorage.setItem(STORAGE_OPTS, JSON.stringify(opts)); } catch {} }, [opts]);
 
-  // 결과 캐시
   const [hits, setHits] = useState<Hit[]>([]);
   const [total, setTotal] = useState<number>(0);
-  const [curIdx, setCurIdx] = useState<number>(-1); // 현재 포커스 인덱스
+  const [curIdx, setCurIdx] = useState<number>(-1);
 
-  // 워커(가능하면) + 폴백
   const workerRef = useRef<Worker | null>(null);
   const useWorker = useRef<boolean>(false);
   useEffect(() => {
     try {
-      // 경로: app/components/FindPanel.tsx -> ../../workers/findWorker.ts
       const w = new Worker(new URL('../workers/findWorker.ts', import.meta.url));
       workerRef.current = w;
       useWorker.current = true;
@@ -142,13 +127,12 @@ export default function FindPanel({
       useWorker.current = false;
     }
     return () => { if (workerRef.current) workerRef.current.terminate(); workerRef.current = null; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const doSearch = (q: string, cols: string[], options: FindOptions, focusFirst: boolean) => {
     if (!q.trim() || cols.length === 0) {
       setHits([]); setTotal(0); setCurIdx(-1);
-      if (onHighlight) onHighlight?.(Number.NaN as any, Number.NaN as any); // noop
+      if (onHighlight) onHighlight?.(Number.NaN as any, Number.NaN as any);
       return;
     }
     const payload = { rows, cols, query: q, options };
@@ -168,25 +152,19 @@ export default function FindPanel({
     }
   };
 
-  // “모두 찾기”
   const onFindAll = () => {
-    // 현재 체크 열만 사용 (허용 + 뷰 존재)
     const cols = allowedCols.filter(c => checkedCols.includes(c));
     doSearch(query, cols, opts, true);
   };
 
-  // “다음 찾기” (사전 Find All 없이도 동작)
   const onFindNext = () => {
     const cols = allowedCols.filter(c => checkedCols.includes(c));
     if (!query.trim() || cols.length===0) return;
-
     if (hits.length === 0) {
-      // 결과 없으면 즉시 검색해서 첫 항목 포커스
       doSearch(query, cols, opts, true);
       return;
     }
     if (total === 0) return;
-
     let next = curIdx + 1;
     if (next >= hits.length) next = 0;
     setCurIdx(next);
@@ -195,7 +173,6 @@ export default function FindPanel({
     onJump(h.r, h.c);
   };
 
-  // 패널 드래그
   const onDragStart = (e: React.MouseEvent) => {
     const startX = e.clientX - pos.x;
     const startY = e.clientY - pos.y;
@@ -214,14 +191,12 @@ export default function FindPanel({
     window.removeEventListener('mouseup', onDragEnd);
   };
 
-  // 닫기 시 하이라이트 해제
   const handleClose = () => {
     setHits([]); setTotal(0); setCurIdx(-1);
-    onHighlight?.(Number.NaN as any, Number.NaN as any); // 부모에서 null 처리
+    onHighlight?.(Number.NaN as any, Number.NaN as any);
     onClose();
   };
 
-  // 체크 토글
   const toggleCol = (col: string) => {
     const set = new Set(checkedCols);
     if (set.has(col)) set.delete(col); else set.add(col);
@@ -230,7 +205,6 @@ export default function FindPanel({
     try { localStorage.setItem(STORAGE_COLS, JSON.stringify(next)); } catch {}
   };
 
-  // 초기 로딩 시 저장된 체크 복원(없으면 모두 체크)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_COLS);
@@ -245,24 +219,15 @@ export default function FindPanel({
     } catch {
       onChangeCheckedCols(allowedCols);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <div
-      className="fixed z-50 w-[360px] rounded-lg border shadow bg-white"
-      style={{ left: pos.x, top: pos.y }}
-    >
-      {/* 드래그 핸들 */}
-      <div
-        className="cursor-move px-3 py-2 text-sm font-semibold bg-gray-100 border-b select-none"
-        onMouseDown={onDragStart}
-      >
+    <div className="fixed z-50 w-[360px] rounded-lg border shadow bg-white" style={{ left: pos.x, top: pos.y }}>
+      <div className="cursor-move px-3 py-2 text-sm font-semibold bg-gray-100 border-b select-none" onMouseDown={onDragStart}>
         찾기
       </div>
 
       <div className="p-3 space-y-3">
-        {/* 열 선택 (허용 컬럼만) */}
         <div className="text-xs">
           <div className="mb-1 font-semibold">열 선택</div>
           <div className="flex flex-wrap gap-2">
@@ -279,7 +244,6 @@ export default function FindPanel({
           </div>
         </div>
 
-        {/* 검색어 & 옵션 */}
         <div className="space-y-2">
           <input
             className="w-full border rounded px-2 py-1 text-sm"
@@ -290,44 +254,26 @@ export default function FindPanel({
           />
           <div className="flex flex-wrap gap-3 text-xs">
             <label className="inline-flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={opts.caseSensitive}
-                onChange={(e)=>setOpts(v=>({ ...v, caseSensitive:e.target.checked }))}
-              />
+              <input type="checkbox" checked={opts.caseSensitive} onChange={(e)=>setOpts(v=>({ ...v, caseSensitive:e.target.checked }))}/>
               대소문자 구분
             </label>
             <label className="inline-flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={opts.wholeCell}
-                onChange={(e)=>setOpts(v=>({ ...v, wholeCell:e.target.checked }))}
-              />
+              <input type="checkbox" checked={opts.wholeCell} onChange={(e)=>setOpts(v=>({ ...v, wholeCell:e.target.checked }))}/>
               전체 일치
             </label>
             <label className="inline-flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={opts.wildcard}
-                onChange={(e)=>setOpts(v=>({ ...v, wildcard:e.target.checked }))}
-              />
+              <input type="checkbox" checked={opts.wildcard} onChange={(e)=>setOpts(v=>({ ...v, wildcard:e.target.checked }))}/>
               와일드카드(*,?)
             </label>
           </div>
         </div>
 
-        {/* 액션 */}
         <div className="flex items-center gap-2">
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindAll}>
-            모두 찾기
-          </button>
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindNext}>
-            다음 찾기
-          </button>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindAll}>모두 찾기</button>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindNext}>다음 찾기</button>
           <div className="ml-auto text-xs text-gray-600">건수: {total}{hits.length?` (${curIdx+1}/${hits.length})`:''}</div>
         </div>
 
-        {/* 결과 리스트 */}
         <div className="max-h-48 overflow-auto border rounded">
           {hits.length === 0 ? (
             <div className="text-xs text-gray-400 p-2">결과 없음</div>
@@ -366,14 +312,13 @@ export default function FindPanel({
         </div>
 
         <div className="flex justify-end">
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={handleClose}>
-            닫기
-          </button>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={handleClose}>닫기</button>
         </div>
       </div>
     </div>
   );
 }
+
 
 
 

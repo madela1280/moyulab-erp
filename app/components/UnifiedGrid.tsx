@@ -709,19 +709,19 @@ const jumpTo = (r: number, c: number) => {
       {isUnified && <GuideRuleModal open={showGuide} onClose={()=>setShowGuide(false)} />}
       {isUnified && <CategoryRuleModal open={showCategory} onClose={()=>setShowCategory(false)} />}
 
-      {/* 찾기 패널 */}
+      {/* 찾기 패널 — ★ 이 블록만 한 군데 렌더 */}
       {showFind && (
-  <FindPanel
-    rows={rows}
-    columns={colsRender}
-    checked={checked}
-    checkedCols={checkedCols}                   // ★ 추가
-    onCheckedColsChange={setCheckedCols}        // ★ 추가
-    onJump={jumpTo}
-    onHighlight={(r,c)=>setHl({r,c})}
-    onClose={() => { setShowFind(false); setHl(null); }}
-  />
-)}
+        <FindPanel
+          rows={rows}
+          columns={colsRender}
+          checked={checked}
+          checkedCols={checkedCols}
+          onChangeCheckedCols={setCheckedCols}
+          onJump={jumpTo}
+          onHighlight={(r, c) => setHl({ r, c })}
+          onClose={() => { setShowFind(false); setHl(null); }}
+        />
+      )}
 
     </div>
   );
