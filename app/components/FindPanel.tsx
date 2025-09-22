@@ -7,217 +7,105 @@ type Row = Record<string, string>;
 type Props = {
   rows: Row[];
   columns: string[];
-  /** 체크된 행 맵 (rIdx:true). 현재 요구사항엔 필수는 아니지만 기존 호환 위해 둠 */
   checked: Record<number, boolean>;
-  /** 부모의 컬럼 체크 상태 공유/유지용 */
   checkedCols: string[];
   onChangeCheckedCols: (cols: string[]) => void;
-  /** 해당 셀로 점프(스크롤/셀 선택) */
   onJump: (r: number, c: number) => void;
-  /** 가로/세로 하이라이트 변경 (r,c) 또는 null */
   onHighlight?: (r: number, c: number) => void;
-  /** 닫기 */
   onClose: () => void;
-};
-
-/** 엑셀-스타일 옵션 */
-type FindOptions = {
-  caseSensitive: boolean;
-  wholeCell: boolean;
-  wildcard: boolean;
 };
 
 type Hit = { r: number; c: number; value: string };
 
+// 허용 열
+const ALLOWED = ['수취인명', '연락처1', '연락처2', '계약자주소', '기기번호'];
 const STORAGE_COLS = 'find_checkedCols';
 const STORAGE_QUERY = 'find_lastQuery';
-const STORAGE_OPTS = 'find_lastOpts';
-
-const ALLOWED = ['수취인명','연락처1','연락처2','계약자주소','기기번호']; // 허용 열만 찾기 대상
 
 function normalizeCols(all: string[]) {
-  // 현재 뷰 컬럼 중 허용 리스트만
   return all.filter(c => ALLOWED.includes(c));
 }
 
-function wildcardToRegExp(input: string) {
-  // * → .* , ? → .
-  const escaped = input.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-  return new RegExp('^' + escaped.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
-}
-
-function makeMatcher(query: string, opts: FindOptions) {
-  if (!opts.wildcard) {
-    if (opts.wholeCell) {
-      return (cell: string) =>
-        opts.caseSensitive ? (cell === query) : (cell.toLowerCase() === query.toLowerCase());
-    }
-    return (cell: string) =>
-      opts.caseSensitive
-        ? cell.includes(query)
-        : cell.toLowerCase().includes(query.toLowerCase());
-  }
-  // 와일드카드
-  const re = wildcardToRegExp(opts.wholeCell ? query : `*${query}*`);
-  if (opts.caseSensitive) return (cell: string) => re.test(cell);
-  return (cell: string) => re.test(cell.toLowerCase());
-}
-
-/** 메인 스레드 검색 (워커 실패시 폴백) */
-function searchSync(rows: Row[], cols: string[], matcher: (s: string)=>boolean): Hit[] {
+function searchSync(rows: Row[], cols: string[], q: string): Hit[] {
+  const query = q.trim();
+  if (!query) return [];
   const out: Hit[] = [];
+  const lowerQ = query.toLowerCase();
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     for (let ci = 0; ci < cols.length; ci++) {
-      const cName = cols[ci];
-      const v = (row[cName] ?? '').toString();
-      if (matcher(v)) out.push({ r, c: ci, value: v });
+      const cname = cols[ci];
+      const v = (row[cname] ?? '').toString();
+      if (!v) continue;
+      if (v.toLowerCase().includes(lowerQ)) out.push({ r, c: ci, value: v });
     }
   }
   return out;
 }
 
 export default function FindPanel({
-  rows, columns, checked, checkedCols, onChangeCheckedCols, onJump, onHighlight, onClose
+  rows,
+  columns,
+  checked,
+  checkedCols,
+  onChangeCheckedCols,
+  onJump,
+  onHighlight,
+  onClose,
 }: Props) {
-  // 위치(드래그)
-  const [pos, setPos] = useState<{x:number;y:number}>(() => ({ x: 24, y: 60 }));
-  const draggingRef = useRef<{dx:number;dy:number} | null>(null);
+  // 패널 위치(드래그)
+  const [pos, setPos] = useState<{ x: number; y: number }>({ x: 24, y: 60 });
+  const draggingRef = useRef<{ dx: number; dy: number } | null>(null);
 
-  // 열 목록(뷰에 존재하는 허용 열만)
   const allowedCols = useMemo(() => normalizeCols(columns), [columns]);
 
-  // 초기 전체 체크 ON (허용 열 모두) + 저장값 복원
+  // 초기 체크: 저장값 있으면 복원, 없으면 허용열 전체
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_COLS);
       if (raw) {
         const saved: string[] = JSON.parse(raw);
         const valid = allowedCols.filter(c => saved.includes(c));
-        if (valid.length) onChangeCheckedCols(valid);
-        else onChangeCheckedCols(allowedCols);
+        onChangeCheckedCols(valid.length ? valid : allowedCols);
       } else {
         onChangeCheckedCols(allowedCols);
       }
     } catch {
       onChangeCheckedCols(allowedCols);
     }
+    // allowedCols 변동 시 한 번 동기화
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowedCols.join('|')]);
 
-  // 검색어/옵션 저장 복원
+  // 검색어
   const [query, setQuery] = useState<string>(() => {
-    try { return localStorage.getItem(STORAGE_QUERY) ?? ''; } catch { return ''; }
-  });
-  const [opts, setOpts] = useState<FindOptions>(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_OPTS);
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return { caseSensitive:false, wholeCell:false, wildcard:false };
-  });
-  useEffect(() => { try { localStorage.setItem(STORAGE_QUERY, query); } catch {} }, [query]);
-  useEffect(() => { try { localStorage.setItem(STORAGE_OPTS, JSON.stringify(opts)); } catch {} }, [opts]);
-
-  // 결과 캐시
-  const [hits, setHits] = useState<Hit[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [curIdx, setCurIdx] = useState<number>(-1);
-
-  // 🔹 현재 검색 기준(쿼리+열+옵션)의 해시를 기억
-  const lastKeyRef = useRef<string>('');
-  const makeKey = (q: string, cols: string[], options: FindOptions) =>
-    JSON.stringify([q, cols.slice().sort(), options]);
-
-  // 워커(가능하면) + 폴백
-  const workerRef = useRef<Worker | null>(null);
-  const useWorker = useRef<boolean>(false);
-  useEffect(() => {
-    try {
-      // 경로: app/components/FindPanel.tsx -> ../workers/findWorker.ts
-      const w = new Worker(new URL('../workers/findWorker.ts', import.meta.url));
-      workerRef.current = w;
-      useWorker.current = true;
-      w.onmessage = (e: MessageEvent<{ total: number; hits: Hit[] }>) => {
-        setTotal(e.data.total);
-        setHits(e.data.hits);
-        setCurIdx(e.data.hits.length ? 0 : -1);
-        if (e.data.hits.length && onHighlight) {
-          const h = e.data.hits[0];
-          onHighlight(h.r, h.c);
-          onJump(h.r, h.c);
-        }
-      };
+      return localStorage.getItem(STORAGE_QUERY) ?? '';
     } catch {
-      workerRef.current = null;
-      useWorker.current = false;
+      return '';
     }
-    return () => { if (workerRef.current) workerRef.current.terminate(); workerRef.current = null; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
-  const doSearch = (q: string, cols: string[], options: FindOptions, focusFirst: boolean) => {
-    if (!q.trim() || cols.length === 0) {
-      setHits([]); setTotal(0); setCurIdx(-1);
-      onHighlight?.(Number.NaN as any, Number.NaN as any); // 부모에서 null 처리
-      lastKeyRef.current = '';                    // 🔹 키 리셋
-      return;
-    }
+  // 결과 상태
+  const [hits, setHits] = useState<Hit[]>([]);
+  const [total, setTotal] = useState(0);
+  const [curIdx, setCurIdx] = useState(-1);
 
-    const payload = { rows, cols, query: q, options };
-
-    if (useWorker.current && workerRef.current) {
-      workerRef.current.postMessage(payload);
-    } else {
-      const matcher = makeMatcher(q, options);
-      const res = searchSync(rows, cols, matcher);
-      setHits(res);
-      setTotal(res.length);
-      setCurIdx(res.length ? 0 : -1);
-      if (res.length && focusFirst) {
-        const h = res[0];
-        onHighlight?.(h.r, h.c);
-        onJump(h.r, h.c);
-      }
-    }
-
-    // 🔹 지금 수행한 검색 기준 기억
-    lastKeyRef.current = makeKey(q, cols, options);
+  // 열 체크 토글 + 저장
+  const toggleCol = (col: string) => {
+    const set = new Set(checkedCols);
+    if (set.has(col)) set.delete(col);
+    else set.add(col);
+    const next = allowedCols.filter(c => set.has(c));
+    onChangeCheckedCols(next);
+    try {
+      localStorage.setItem(STORAGE_COLS, JSON.stringify(next));
+    } catch {}
   };
 
-  // “모두 찾기”
-  const onFindAll = () => {
-    const cols = allowedCols.filter(c => checkedCols.includes(c));
-    doSearch(query, cols, opts, true);
-  };
-
-  // “다음 찾기” (사전 Find All 없이도 동작 + 기준 바뀌면 즉시 재검색)
-  const onFindNext = () => {
-    const cols = allowedCols.filter(c => checkedCols.includes(c));
-    if (!query.trim() || cols.length === 0) return;
-
-    const keyNow = makeKey(query, cols, opts);
-
-    // 🔹 이전과 기준(쿼리/열/옵션)이 다르거나 결과가 비어 있으면 바로 새 검색 후 첫 결과로 이동
-    if (keyNow !== lastKeyRef.current || hits.length === 0) {
-      doSearch(query, cols, opts, true);
-      return;
-    }
-
-    // 기존 결과에서 다음으로 순환
-    let next = curIdx + 1;
-    if (next >= hits.length) next = 0;
-    setCurIdx(next);
-    const h = hits[next];
-    onHighlight?.(h.r, h.c);
-    onJump(h.r, h.c);
-  };
-
-  // 패널 드래그
+  // 드래그 핸들
   const onDragStart = (e: React.MouseEvent) => {
-    const startX = e.clientX - pos.x;
-    const startY = e.clientY - pos.y;
-    draggingRef.current = { dx: startX, dy: startY };
+    draggingRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
     window.addEventListener('mousemove', onDragMove);
     window.addEventListener('mouseup', onDragEnd);
   };
@@ -232,21 +120,53 @@ export default function FindPanel({
     window.removeEventListener('mouseup', onDragEnd);
   };
 
-  // 닫기 시 하이라이트/상태 해제
-  const handleClose = () => {
-    setHits([]); setTotal(0); setCurIdx(-1);
-    lastKeyRef.current = '';
-    onHighlight?.(Number.NaN as any, Number.NaN as any); // 부모에서 null 처리
-    onClose();
+  // 공통 검색 실행
+  const runSearch = (focusFirst: boolean) => {
+    const cols = allowedCols.filter(c => checkedCols.includes(c));
+    const res = searchSync(rows, cols, query);
+    setHits(res);
+    setTotal(res.length);
+    if (res.length && focusFirst) {
+      setCurIdx(0);
+      const h = res[0];
+      onHighlight?.(h.r, h.c);
+      onJump(h.r, h.c);
+    } else {
+      setCurIdx(-1);
+    }
   };
 
-  // 체크 토글 + 저장
-  const toggleCol = (col: string) => {
-    const set = new Set(checkedCols);
-    if (set.has(col)) set.delete(col); else set.add(col);
-    const next = allowedCols.filter(c => set.has(c));
-    onChangeCheckedCols(next);
-    try { localStorage.setItem(STORAGE_COLS, JSON.stringify(next)); } catch {}
+  // 모두 찾기
+  const onFindAll = () => {
+    runSearch(true);
+  };
+
+  // 다음 찾기 (사전 모두찾기 없이도 동작)
+  const onFindNext = () => {
+    const cols = allowedCols.filter(c => checkedCols.includes(c));
+    if (!query.trim() || cols.length === 0) return;
+
+    if (hits.length === 0) {
+      runSearch(true);
+      return;
+    }
+    if (total === 0) return;
+
+    let next = curIdx + 1;
+    if (next >= hits.length) next = 0;
+    setCurIdx(next);
+    const h = hits[next];
+    onHighlight?.(h.r, h.c);
+    onJump(h.r, h.c);
+  };
+
+  // 닫기
+  const handleClose = () => {
+    setHits([]);
+    setTotal(0);
+    setCurIdx(-1);
+    onHighlight?.(Number.NaN as any, Number.NaN as any); // 부모에서 null 처리
+    onClose();
   };
 
   return (
@@ -263,7 +183,7 @@ export default function FindPanel({
       </div>
 
       <div className="p-3 space-y-3">
-        {/* 열 선택 (허용 컬럼만) */}
+        {/* 열 선택 */}
         <div className="text-xs">
           <div className="mb-1 font-semibold">열 선택</div>
           <div className="flex flex-wrap gap-2">
@@ -280,82 +200,92 @@ export default function FindPanel({
           </div>
         </div>
 
-     {/* 검색어 */}
-<div className="space-y-2">
-  <input
-    className="w-full border rounded px-2 py-1 text-sm"
-    placeholder="찾을 내용"
-    value={query}
-    onChange={(e) => {
-      const v = e.target.value;
-      setQuery(v);
-      // 입력 바뀌면 이전 결과/포커스 초기화 → '다음 찾기' 단독으로도 새 검색 가능
-      setHits([]);
-      setTotal(0);
-      setCurIdx(-1);
-      onHighlight?.(Number.NaN as any, Number.NaN as any);
-    }}
-    onKeyDown={(e) => { if (e.key === 'Enter') onFindNext(); }}
-  />
-</div>
+        {/* 검색어 */}
+        <div className="space-y-2">
+          <input
+            className="w-full border rounded px-2 py-1 text-sm"
+            placeholder="찾을 내용"
+            value={query}
+            onChange={e => {
+              const v = e.target.value;
+              setQuery(v);
+              try {
+                localStorage.setItem(STORAGE_QUERY, v);
+              } catch {}
+              // 입력이 바뀌면 이전 결과/포커스 초기화 → '다음 찾기' 단독 시 새 검색
+              setHits([]);
+              setTotal(0);
+              setCurIdx(-1);
+              onHighlight?.(Number.NaN as any, Number.NaN as any);
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') onFindNext();
+            }}
+          />
+        </div>
 
-{/* 액션 */}
-<div className="flex items-center gap-2 mt-2">
-  <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindAll}>
-    모두 찾기
-  </button>
-  <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindNext}>
-    다음 찾기
-  </button>
-  <div className="ml-auto text-xs text-gray-600">
-    건수: {total}{hits.length ? ` (${curIdx + 1}/${hits.length})` : ''}
-  </div>
-</div>
+        {/* 액션 */}
+        <div className="flex items-center gap-2">
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindAll}>
+            모두 찾기
+          </button>
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindNext}>
+            다음 찾기
+          </button>
+          <div className="ml-auto text-xs text-gray-600">
+            건수: {total}
+            {hits.length ? ` (${curIdx + 1}/${hits.length})` : ''}
+          </div>
+        </div>
 
-{/* 결과 리스트 */}
-<div className="max-h-48 overflow-auto border rounded mt-2">
-  {hits.length === 0 ? (
-    <div className="text-xs text-gray-400 p-2">결과 없음</div>
-  ) : (
-    <table className="w-full text-xs">
-      <thead className="bg-gray-50 sticky top-0">
-        <tr>
-          <th className="border px-2 py-1 text-left">행</th>
-          <th className="border px-2 py-1 text-left">열</th>
-          <th className="border px-2 py-1 text-left">값</th>
-        </tr>
-      </thead>
-      <tbody>
-        {hits.map((h, i) => {
-          const colName = allowedCols.filter(c => checkedCols.includes(c))[h.c] ?? '';
-          const active = i === curIdx;
-          return (
-            <tr
-              key={`${h.r}-${h.c}-${i}`}
-              className={active ? 'bg-blue-50 cursor-pointer' : 'hover:bg-gray-50 cursor-pointer'}
-              onClick={() => {
-                setCurIdx(i);
-                onHighlight?.(h.r, h.c);
-                onJump(h.r, h.c);
-              }}
-            >
-              <td className="border px-2 py-1">{h.r + 1}</td>
-              <td className="border px-2 py-1">{colName}</td>
-              <td className="border px-2 py-1 truncate" title={h.value}>{h.value}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  )}
-</div>
+        {/* 결과 리스트 */}
+        <div className="max-h-48 overflow-auto border rounded">
+          {hits.length === 0 ? (
+            <div className="text-xs text-gray-400 p-2">결과 없음</div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="border px-2 py-1 text-left">행</th>
+                  <th className="border px-2 py-1 text-left">열</th>
+                  <th className="border px-2 py-1 text-left">값</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hits.map((h, i) => {
+                  const colName = allowedCols.filter(c => checkedCols.includes(c))[h.c] ?? '';
+                  const active = i === curIdx;
+                  return (
+                    <tr
+                      key={`${h.r}-${h.c}-${i}`}
+                      className={active ? 'bg-blue-50 cursor-pointer' : 'hover:bg-gray-50 cursor-pointer'}
+                      onClick={() => {
+                        setCurIdx(i);
+                        onHighlight?.(h.r, h.c);
+                        onJump(h.r, h.c);
+                      }}
+                    >
+                      <td className="border px-2 py-1">{h.r + 1}</td>
+                      <td className="border px-2 py-1">{colName}</td>
+                      <td className="border px-2 py-1 truncate" title={h.value}>
+                        {h.value}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
 
-<div className="flex justify-end mt-2">
-  <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={handleClose}>
-    닫기
-  </button>
- </div>
-</div>
-);
+        <div className="flex justify-end">
+          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={handleClose}>
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
+
 
