@@ -300,18 +300,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     return () => host.removeEventListener('keydown', onKey);
   }, [sel, filteredRows, colsRender]);
 
-  const [showFind, setShowFind] = useState(false);
-  const jumpTo = (r:number, c:number) => {
-    setSel({ r1:r, c1:c, r2:r, c2:c });
-    const host = tableHostRef.current;
-    if (host) {
-      const rowHeight = 28;
-      const y = Math.max(0, r * rowHeight - 60);
-      host.scrollTo({ top: y, behavior: 'smooth' });
-    }
-  };
-
-// ▼ 찾기 기능 상태
+  // ▼ 찾기 기능 상태
   const [showFind, setShowFind] = useState(false);
   const jumpTo = (r:number, c:number) => {
     setSel({ r1:r, c1:c, r2:r, c2:c });
