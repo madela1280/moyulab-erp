@@ -493,10 +493,28 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
               document.body.removeChild(a); URL.revokeObjectURL(url);
             }}
           >다운로드(엑셀)</button>
+        
+         <ColorMenu onApply={applyColor} />
 
-          <ColorMenu onApply={applyColor} />
+         <div className="relative">
+             <button
+                   className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+                   onClick={() => setShowFind(v => !v)}
+             >찾기</button>
+
+            {showFind && (
+              <div className="absolute left-0 top-8 z-40">
+                 <FindPanel
+                     rows={rows}
+                     columns={colsRender}
+                     checked={checked}
+                     onJump={jumpTo}
+                     onClose={() => setShowFind(false)}
+                  />
+              </div>
+            )}
         </div>
-
+        
         <div className="ml-auto flex items-center gap-2">
           <button
             className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
