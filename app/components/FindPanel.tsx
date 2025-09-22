@@ -280,89 +280,83 @@ export default function FindPanel({
           </div>
         </div>
 
-        {/* 검색어 & 옵션 */}
-        <div className="space-y-2">
-          <input
-              className="w-full border rounded px-2 py-1 text-sm"
-              placeholder="찾을 내용"
-              value={query}
-              onChange={(e) => {
-                 const v = e.target.value;
-                 setQuery(v);
-                 // 이전 결과/포커스/건수 초기화 → 다음찾기 누르면 새로 검색 시드
-                 setHits([]);
-                 setTotal(0);
-                 setCurIdx(-1);
-                 // 이전 하이라이트 제거
-                 onHighlight?.(Number.NaN as any, Number.NaN as any);
-               }}
-               onKeyDown={(e) => { if (e.key === 'Enter') onFindNext(); }}
-         />
+       {/* 검색어 */}
+<div className="space-y-2">
+  <input
+    className="w-full border rounded px-2 py-1 text-sm"
+    placeholder="찾을 내용"
+    value={query}
+    onChange={(e) => {
+      const v = e.target.value;
+      setQuery(v);
+      // 이전 결과/포커스/건수 초기화 → 다음찾기 단독 시 새로 검색
+      setHits([]);
+      setTotal(0);
+      setCurIdx(-1);
+      // 이전 하이라이트 제거
+      onHighlight?.(Number.NaN as any, Number.NaN as any);
+    }}
+    onKeyDown={(e) => { if (e.key === 'Enter') onFindNext(); }}
+  />
+</div>
 
-            onKeyDown={(e)=>{ if (e.key==='Enter') onFindNext(); }}
-          />
-          
-        {/* 액션 */}
-        <div className="flex items-center gap-2">
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindAll}>
-            모두 찾기
-          </button>
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindNext}>
-            다음 찾기
-          </button>
-          <div className="ml-auto text-xs text-gray-600">건수: {total}{hits.length?` (${curIdx+1}/${hits.length})`:''}</div>
-        </div>
+{/* 액션 */}
+<div className="flex items-center gap-2 mt-2">
+  <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindAll}>
+    모두 찾기
+  </button>
+  <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindNext}>
+    다음 찾기
+  </button>
+  <div className="ml-auto text-xs text-gray-600">
+    건수: {total}{hits.length ? ` (${curIdx + 1}/${hits.length})` : ''}
+  </div>
+</div>
 
-        {/* 결과 리스트 */}
-        <div className="max-h-48 overflow-auto border rounded">
-          {hits.length === 0 ? (
-            <div className="text-xs text-gray-400 p-2">결과 없음</div>
-          ) : (
-            <table className="w-full text-xs">
-              <thead className="bg-gray-50 sticky top-0">
-                <tr>
-                  <th className="border px-2 py-1 text-left">행</th>
-                  <th className="border px-2 py-1 text-left">열</th>
-                  <th className="border px-2 py-1 text-left">값</th>
-                </tr>
-              </thead>
-              <tbody>
-                {hits.map((h, i) => {
-                  const visibleCols = allowedCols.filter(c => checkedCols.includes(c));
-                  const colName = visibleCols[h.c] ?? '';
-                  const active = i === curIdx;
-                  return (
-                    <tr
-                      key={`${h.r}-${h.c}-${i}`}
-                      className={active ? 'bg-blue-50 cursor-pointer' : 'hover:bg-gray-50 cursor-pointer'}
-                      onClick={() => {
-                        setCurIdx(i);
-                        onHighlight?.(h.r, h.c);
-                        onJump(h.r, h.c);
-                      }}
-                    >
-                      <td className="border px-2 py-1">{h.r+1}</td>
-                      <td className="border px-2 py-1">{colName}</td>
-                      <td className="border px-2 py-1 truncate" title={h.value}>{h.value}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+{/* 결과 리스트 */}
+<div className="max-h-48 overflow-auto border rounded mt-2">
+  {hits.length === 0 ? (
+    <div className="text-xs text-gray-400 p-2">결과 없음</div>
+  ) : (
+    <table className="w-full text-xs">
+      <thead className="bg-gray-50 sticky top-0">
+        <tr>
+          <th className="border px-2 py-1 text-left">행</th>
+          <th className="border px-2 py-1 text-left">열</th>
+          <th className="border px-2 py-1 text-left">값</th>
+        </tr>
+      </thead>
+      <tbody>
+        {hits.map((h, i) => {
+          const colName =
+            allowedCols.filter(c => checkedCols.includes(c))[h.c] ?? '';
+          const active = i === curIdx;
+          return (
+            <tr
+              key={`${h.r}-${h.c}-${i}`}
+              className={active ? 'bg-blue-50 cursor-pointer' : 'hover:bg-gray-50 cursor-pointer'}
+              onClick={() => {
+                setCurIdx(i);
+                onHighlight?.(h.r, h.c);
+                onJump(h.r, h.c);
+              }}
+            >
+              <td className="border px-2 py-1">{h.r + 1}</td>
+              <td className="border px-2 py-1">{colName}</td>
+              <td className="border px-2 py-1 truncate" title={h.value}>{h.value}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  )}
+</div>
 
-        <div className="flex justify-end">
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={handleClose}>
-            닫기
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-
-
+<div className="flex justify-end mt-2">
+  <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={handleClose}>
+    닫기
+  </button>
+</div>
+</div>   {/* <- .p-3 space-y-3 닫힘 */}
+</div>     {/* <- 패널 컨테이너 닫힘 */}
 
