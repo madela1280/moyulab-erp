@@ -270,7 +270,7 @@ const [showFind, setShowFind] = useState(false);                       // 찾기
 // ▼ 찾기 열 선택 상태 (localStorage 저장/복원)  👈️ 이 블록 "추가"
 const [checkedCols, setCheckedCols] = useState<string[]>(() => {
   const saved = localStorage.getItem('find_checkedCols');
-  return saved ? JSON.parse(saved) : ['수취인명','연락처1','연락처2','계약자주소','기기번호'];
+ return saved ? JSON.parse(saved) : ['수취인명','연락처1','연락처2','계약자주소','기기번호'];
 });
 useEffect(() => {
   localStorage.setItem('find_checkedCols', JSON.stringify(checkedCols));
