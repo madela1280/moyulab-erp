@@ -377,8 +377,8 @@ export default function DeviceGrid({ viewId }: { viewId: ViewId }) {
         <div
             ref={tableHostRef}
             tabIndex={0}
-            /* ▼ 높이 조정: -220px → -180px */
-            className="w-full max-h-[calc(100vh-180px)] overflow-auto border rounded outline-none"
+            /* ▼ 높이 조정: -220px → -140px */
+            className="w-full max-h-[calc(100vh-140px)] overflow-auto border rounded outline-none"
        >
           <table className="min-w-[2200px] w-max text-sm border-collapse">
             <colgroup>
