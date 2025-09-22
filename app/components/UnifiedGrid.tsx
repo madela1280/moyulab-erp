@@ -267,6 +267,15 @@ const [draggingSel, setDraggingSel] = useState(false);
 const [hl, setHl] = useState<{ r: number; c: number } | null>(null);   // 하이라이트 좌표
 const [showFind, setShowFind] = useState(false);                       // 찾기 패널 표시 여부
 
+// ▼ 찾기 열 선택 상태 (localStorage 저장/복원)  👈️ 이 블록 "추가"
+const [checkedCols, setCheckedCols] = useState<string[]>(() => {
+  const saved = localStorage.getItem('find_checkedCols');
+  return saved ? JSON.parse(saved) : ['수취인명','연락처1','연락처2','계약자주소','기기번호'];
+});
+useEffect(() => {
+  localStorage.setItem('find_checkedCols', JSON.stringify(checkedCols));
+}, [checkedCols]);
+
 const isSelected = (r: number, c: number) => {
   if (!sel) return false;
   const [r1, r2] = [Math.min(sel.r1, sel.r2), Math.max(sel.r1, sel.r2)];
@@ -706,6 +715,8 @@ const jumpTo = (r: number, c: number) => {
     rows={rows}
     columns={colsRender}
     checked={checked}
+    checkedCols={checkedCols}                   // ★ 추가
+    onCheckedColsChange={setCheckedCols}        // ★ 추가
     onJump={jumpTo}
     onHighlight={(r,c)=>setHl({r,c})}
     onClose={() => { setShowFind(false); setHl(null); }}
