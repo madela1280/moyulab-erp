@@ -300,17 +300,19 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     return () => host.removeEventListener('keydown', onKey);
   }, [sel, filteredRows, colsRender]);
 
-  // ▼ 찾기 기능 상태
-  const [showFind, setShowFind] = useState(false);
-  const jumpTo = (r:number, c:number) => {
-    setSel({ r1:r, c1:c, r2:r, c2:c });
-    const host = tableHostRef.current;
-    if (host) {
-      const rowHeight = 28;
-      const y = Math.max(0, r * rowHeight - 60);
-      host.scrollTo({ top: y, behavior: 'smooth' });
-    }
-  };
+ // ▼ 찾기 기능 상태
+const [showFind, setShowFind] = useState(false);
+const [hl, setHl] = useState<{ r: number; c: number } | null>(null); // ★ 추가
+
+const jumpTo = (r: number, c: number) => {
+  setSel({ r1: r, c1: c, r2: r, c2: c });
+  const host = tableHostRef.current;
+  if (host) {
+    const rowHeight = 28;
+    const y = Math.max(0, r * rowHeight - 60);
+    host.scrollTo({ top: y, behavior: 'smooth' });
+  }
+};
 
   /** 셀 색상 저장 */
   type Style = { bg?: string; color?: string };
@@ -629,7 +631,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                     return (
                       <td
                         key={ci}
-                        className={`border px-[0.4rem] py-[0.128rem] ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}`}
+                        className={`border px-[0.4rem] py-[0.128rem] ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''} ${hl && (hl.r===rIdx || hl.c===ci) ? 'bg-sky-50' : ''}`}
                         onMouseDown={() => startSel(rIdx, ci)}
                         onMouseEnter={() => extendSel(rIdx, ci)}
                         onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
@@ -700,9 +702,21 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         </div>
       )}
 
-      {/* 규칙 모달 (통합관리에서만 표시) */}
+            {/* 규칙 모달 (통합관리에서만 표시) */}
       {isUnified && <GuideRuleModal open={showGuide} onClose={()=>setShowGuide(false)} />}
       {isUnified && <CategoryRuleModal open={showCategory} onClose={()=>setShowCategory(false)} />}
+
+      {/* 찾기 패널 */}
+      {showFind && (
+        <FindPanel
+          rows={rows}
+          columns={colsRender}
+          checked={checked}
+          onJump={jumpTo}
+          onHighlight={(r,c)=>setHl({r,c})}
+          onClose={() => setShowFind(false)}
+        />
+      )}
     </div>
   );
 }

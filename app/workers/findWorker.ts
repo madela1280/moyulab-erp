@@ -2,31 +2,38 @@
 export type FindReq = {
   rows: Record<string,string>[];
   columns: string[];
-  checkedIndices: number[];      // 체크된 행 인덱스만 검색
+  checkedIndices: number[];
   query: string;
   caseSensitive: boolean;
   wholeCell: boolean;
-  wildcard: boolean;             // * ? 지원 ( ~ 이스케이프는 생략 )
-  offset: number;                // 페이지네이션 시작
-  limit: number;                 // 최대 N건 반환
+  wildcard: boolean;
+  offset: number;
+  limit: number;
+  columnsToSearch?: string[] | null; // ★ 추가: 특정 열만 검색
 };
 
 export type FindHit = { r: number; c: number; v: string };
 export type FindRes = { total: number; hits: FindHit[] };
 
 const wildcardToRegex = (q: string) => {
-  // * -> .*  , ? -> .  (정규식 메타문자는 이스케이프)
   const esc = q.replace(/[-/\\^$+?.()|[\]{}]/g, '\\$&');
-  return esc.replace(/\\\*/g, '\\*') // 이미 이스케이프된 * 보호
+  return esc.replace(/\\\*/g, '\\*')
             .replace(/\*/g, '.*')
             .replace(/\\\?/g, '\\?')
             .replace(/\?/g, '.');
 };
 
 self.onmessage = (e: MessageEvent<FindReq>) => {
-  const { rows, columns, checkedIndices, query, caseSensitive, wholeCell, wildcard, offset, limit } = e.data;
+  const { rows, columns, checkedIndices, query, caseSensitive, wholeCell, wildcard, offset, limit, columnsToSearch } = e.data;
   let term = query || '';
   if (!term.trim()) { (self as any).postMessage({ total: 0, hits: [] } as FindRes); return; }
+
+  const colIndexMap = new Map<string, number>();
+  columns.forEach((c, i) => colIndexMap.set(c, i));
+  const targetColIdx: number[] =
+    (columnsToSearch && columnsToSearch.length)
+    ? columnsToSearch.map(c => colIndexMap.get(c)).filter((v): v is number => typeof v === 'number')
+    : columns.map((_, i) => i);
 
   let sourceRows = checkedIndices.length ? checkedIndices.map(i => ({ row: rows[i], idx: i })) :
                                            rows.map((row, i) => ({ row, idx: i }));
@@ -37,8 +44,9 @@ self.onmessage = (e: MessageEvent<FindReq>) => {
 
   const allHits: FindHit[] = [];
   for (const {row, idx} of sourceRows) {
-    for (let c = 0; c < columns.length; c++) {
-      const v = (row[columns[c]] ?? '').toString();
+    for (const c of targetColIdx) {
+      const colName = columns[c];
+      const v = (row[colName] ?? '').toString();
       if (re.test(v)) allHits.push({ r: idx, c, v });
     }
   }
@@ -46,3 +54,4 @@ self.onmessage = (e: MessageEvent<FindReq>) => {
   const hits = allHits.slice(offset, offset + limit);
   (self as any).postMessage({ total, hits } as FindRes);
 };
+
