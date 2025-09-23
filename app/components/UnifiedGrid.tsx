@@ -81,10 +81,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     }
   };
   const saveRows = (next: Row[]) => {
-    localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next));
-    setRows(next);
-    window.dispatchEvent(new Event('unified_rows_updated'));
-  };
+  localStorage.setItem(storageKeyFor(vId), JSON.stringify(next));
+  setRows(next);
+  window.dispatchEvent(new Event('unified_rows_updated'));
+};
 
   /** column widths (저장/복구) + 드래그 리사이즈 */
   const COLW_KEY = COLW_PREFIX + vId;
@@ -426,7 +426,20 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const [extRow, setExtRow] = useState<number|null>(null);
   const [extCol, setExtCol] = useState<string|null>(null);
   const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
-  const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
+  const openExt = (rIdx:number, col:string) => {
+  const viewRow = data[rIdx];
+  if (!viewRow) return;
+
+  let baseIdx = rows.indexOf(viewRow);
+  if (baseIdx < 0) {
+    baseIdx = rows.findIndex(r =>
+      r === viewRow || colsRender.every(k => (r?.[k] ?? '') === (viewRow?.[k] ?? ''))
+    );
+  }
+  if (baseIdx < 0) return;
+
+  setExtRow(baseIdx); setExtCol(col); setShowExt(true);
+};
 
   const handleSaveExt = (data:{days:number; reasons:string[]; amount:number; due:string}) => {
     if (extRow==null || !extCol) return;
@@ -760,7 +773,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         open={showExt}
         initial={
           extRow!=null && extCol ? (()=>{ 
-            const str = (rows[extRow][extCol] ?? '').toString();
+            const str = (rows[extRow]?.[extCol] ?? '').toString();
             // 저장 포맷: "일수/사유/금액/만기일"
             const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
 
