@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -65,11 +66,10 @@ export default function ExtensionModal({
   initial,
   anchorPoint,
 }: Props) {
-  /** ⬇ 훅은 항상 동일 개수 호출되도록, 조기 return(null) 금지 */
   // 연장일수
   const [days, setDays] = useState<number>(initial?.days ?? 0);
 
-  // 사유 (단일 필드 사용. 배열 구조는 유지)
+  // 사유(단일 선택만 사용. 배열 구조는 유지)
   const [reasons, setReasons] = useState<string[]>(
     initial?.reasons && initial.reasons.length ? [initial.reasons[0]] : ['']
   );
@@ -86,7 +86,7 @@ export default function ExtensionModal({
     formatAmount(initial?.amount ?? 0)
   );
 
-  // 만기일
+  // 만기일(YYYY-MM-DD 분해)
   const [dueY, setDueY] = useState<string>('');
   const [dueM, setDueM] = useState<string>('');
   const [dueD, setDueD] = useState<string>('');
@@ -110,6 +110,7 @@ export default function ExtensionModal({
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const boxRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (!open) return;
     const onMove = (e: MouseEvent) => {
       if (!dragging) return;
       setPos({ x: e.clientX - offset.x, y: e.clientY - offset.y });
@@ -121,11 +122,61 @@ export default function ExtensionModal({
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [dragging, offset]);
+  }, [dragging, offset, open]);
 
-  /** 비활성화 조건 */
+  if (!open) {
+    // 모달은 항상 마운트되지만, 닫힐 때는 DOM만 비움 (훅 호출 순서 유지)
+    return <div className="fixed inset-0 z-[1000]" style={{ display: 'none' }} />;
+  }
+
+  // 사유 선택 핸들러
+  const setReason = (v: string) => setReasons([v]);
+  const handleSelectReason = (value: string) => {
+    if (value === '__CUSTOM__') {
+      const label = prompt('사유를 직접 입력하세요.');
+      const v = (label ?? '').trim();
+      if (!v) return;
+      setReason(v);
+      return;
+    }
+    if (value === '__ADD__') {
+      const label = prompt('새 사유(선택지)를 추가하세요.');
+      const v = (label ?? '').trim();
+      if (!v) return;
+      if (!reasonOptions.includes(v)) {
+        const next = [...reasonOptions, v];
+        setReasonOptions(next);
+        saveReasonOptions(next);
+      }
+      setReason(v);
+      return;
+    }
+    setReason(value);
+  };
+
+  // 삭제 모드
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [deleteChecks, setDeleteChecks] = useState<string[]>([]);
+  const toggleDeleteMode = () => {
+    setDeleteMode((v) => !v);
+    setDeleteChecks([]);
+  };
+  const handleDeleteApply = () => {
+    if (!deleteChecks.length) {
+      setDeleteMode(false);
+      return;
+    }
+    const next = reasonOptions.filter((opt) => !deleteChecks.includes(opt));
+    setReasonOptions(next);
+    saveReasonOptions(next);
+    setDeleteChecks([]);
+    setDeleteMode(false);
+    if (next.indexOf(reason) === -1 && reason !== '') setReason('');
+  };
+
   const parsedAmount = parseAmount(amountStr);
   const due = makeDate(dueY, dueM, dueD);
+
   const disabled =
     !Number.isFinite(days) ||
     days <= 0 ||
@@ -133,9 +184,8 @@ export default function ExtensionModal({
     parsedAmount < 0 ||
     !reason.trim();
 
-  /** 렌더 */
   return (
-    <div className={`fixed inset-0 z-[1000] ${open ? '' : 'hidden'}`}>
+    <div className="fixed inset-0 z-[1000]">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div
         ref={boxRef}
@@ -180,10 +230,7 @@ export default function ExtensionModal({
             <div className="mb-1 flex items-center justify-between">
               <span>사유</span>
               <button
-                onClick={() => {
-                  setDeleteMode((v) => !v);
-                  setDeleteChecks([]);
-                }}
+                onClick={toggleDeleteMode}
                 className="px-2 py-1 text-[11px] border rounded hover:bg-gray-50 text-red-600"
               >
                 {deleteMode ? '삭제 취소' : '삭제'}
@@ -209,18 +256,7 @@ export default function ExtensionModal({
                   </label>
                 ))}
                 <button
-                  onClick={() => {
-                    if (!deleteChecks.length) {
-                      setDeleteMode(false);
-                      return;
-                    }
-                    const next = reasonOptions.filter((opt) => !deleteChecks.includes(opt));
-                    setReasonOptions(next);
-                    saveReasonOptions(next);
-                    setDeleteChecks([]);
-                    setDeleteMode(false);
-                    if (next.indexOf(reason) === -1 && reason !== '') setReason('');
-                  }}
+                  onClick={handleDeleteApply}
                   className="mt-2 px-2 py-1 text-xs border rounded bg-red-100 hover:bg-red-200 text-red-700"
                 >
                   선택 삭제 적용
@@ -228,33 +264,10 @@ export default function ExtensionModal({
               </div>
             )}
 
-            {/* 드롭다운만 사용 (직접입력/입력추가 포함) */}
             <select
               className="w-full border rounded px-2 py-1"
               value={reasonOptions.includes(reason) || reason === '' ? reason : ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === '__CUSTOM__') {
-                  const label = prompt('사유를 직접 입력하세요.');
-                  const v = (label ?? '').trim();
-                  if (!v) return;
-                  setReasons([v]);
-                  return;
-                }
-                if (value === '__ADD__') {
-                  const label = prompt('새 사유(선택지)를 추가하세요.');
-                  const v = (label ?? '').trim();
-                  if (!v) return;
-                  if (!reasonOptions.includes(v)) {
-                    const next = [...reasonOptions, v];
-                    setReasonOptions(next);
-                    saveReasonOptions(next);
-                  }
-                  setReasons([v]);
-                  return;
-                }
-                setReasons([value]);
-              }}
+              onChange={(e) => handleSelectReason(e.target.value)}
             >
               <option value="" disabled>
                 사유 선택
@@ -333,8 +346,8 @@ export default function ExtensionModal({
               const payload = {
                 days: Math.max(0, Math.floor(days)),
                 reasons: [reason.trim()],
-                amount: parsedAmount,
-                due: due!,
+                amount: parseAmount(amountStr),
+                due: (due ?? ''),
               };
               onSave(payload);
               onClose();
