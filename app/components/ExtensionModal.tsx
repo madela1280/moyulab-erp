@@ -6,16 +6,16 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onSave: (data: {
-    days: string;
-    reason: string;
-    amount: string;
-    endDate: string;
+    days: number;
+    reasons: string[];
+    amount: number;
+    due: string; // YYYY-MM-DD
   }) => void;
   initial?: {
-    days?: string;
-    reason?: string;
-    amount?: string;
-    endDate?: string;
+    days?: number;
+    reasons?: string[];
+    amount?: number;
+    due?: string; // YYYY-MM-DD
   };
   anchorPoint?: { x: number; y: number };
 };
@@ -72,7 +72,7 @@ export default function ExtensionModal({
   // 연장일수
   const [days, setDays] = useState<number>(initial?.days ?? 0);
 
-  // 사유(단일 선택만 사용. 배열 구조는 유지)
+  // 사유(단일 선택)
   const [reasons, setReasons] = useState<string[]>(
     initial?.reasons && initial.reasons.length ? [initial.reasons[0]] : ['']
   );
@@ -89,7 +89,7 @@ export default function ExtensionModal({
     formatAmount(initial?.amount ?? 0)
   );
 
-  // 만기일(YYYY-MM-DD 분해)
+  // 만기일
   const [dueY, setDueY] = useState<string>('');
   const [dueM, setDueM] = useState<string>('');
   const [dueD, setDueD] = useState<string>('');
@@ -129,8 +129,9 @@ export default function ExtensionModal({
 
   if (!open) return null;
 
-  // 사유 선택 핸들러
+  // 선택 처리
   const setReason = (v: string) => setReasons([v]);
+
   const handleSelectReason = (value: string) => {
     if (value === '__CUSTOM__') {
       const label = prompt('사유를 직접 입력하세요.');
@@ -346,7 +347,7 @@ export default function ExtensionModal({
               const payload = {
                 days: Math.max(0, Math.floor(days)),
                 reasons: [reason.trim()],
-                amount: parseAmount(amountStr),
+                amount: parsedAmount,
                 due: due ?? '',
               };
               onSave(payload);
@@ -361,6 +362,7 @@ export default function ExtensionModal({
     </div>
   );
 }
+
 
 
 

@@ -415,10 +415,11 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const deviceIndexRef = useRef<Record<string, any> | null>(null);
   const ensureDeviceIdx = () => { if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex(); };
 
-  // ★ 연장 모달 상태/핸들러
+  // ★ 연장 모달 상태/핸들러 (클릭으로 열림)
   const [showExt, setShowExt] = useState(false);
   const [extRow, setExtRow] = useState<number|null>(null);
   const [extCol, setExtCol] = useState<string|null>(null);
+  const isExtCol = (c:string) => ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
   const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
 
   const handleSaveExt = (payload:{ days:number; reasons:string[]; amount:number; due:string }) => {
@@ -560,7 +561,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         <div
           ref={tableHostRef}
           tabIndex={0}
-          className="w-full max-h-[calc(100vh-150px)] overflow-auto border rounded outline-none"
+          className="w-full max-h-[calc(100vh-156px)] overflow-auto border rounded outline-none"
         >
           <table className="min-w-[3200px] w-max text-sm border-collapse">
             <colgroup>
@@ -645,6 +646,11 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                   {colsRender.map((c, ci) => {
                     const style = cellStyles[keyOf(rIdx, ci)] ?? {};
                     const val = row[c] ?? '';
+
+                    const handleCellClick = () => {
+                      if (isExtCol(c)) openExt(rIdx, c); // ★ 클릭으로 열기
+                    };
+
                     return (
                       <td
                         key={ci}
@@ -655,11 +661,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                         onMouseEnter={() => extendSel(rIdx, ci)}
                         onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
                         style={{ background: style.bg, color: style.color }}
-                        onDoubleClick={()=>{
-                          if (['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c)) {
-                            openExt(rIdx, c);
-                          }
-                        }}
+                        onClick={handleCellClick}  // ★ 단일 클릭 핸들러
                       >
                         <input
                           className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0"
@@ -679,6 +681,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                           }}
                           onBlur={() => saveRows(rows)}
                           onPaste={(e) => onPaste(rIdx, c, e)}
+                          onClick={(e)=>{ if (isExtCol(c)) { e.stopPropagation(); openExt(rIdx, c); } }} // ★ 인풋 클릭도 모달 열림
                         />
                       </td>
                     );
@@ -879,6 +882,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
