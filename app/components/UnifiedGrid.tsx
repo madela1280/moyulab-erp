@@ -435,7 +435,6 @@ const jumpTo = (r: number, c: number) => {
   if (extRow == null || !extCol) return;
 
   const next = rows.map(r => ({ ...r }));
-  // 저장 포맷: "일수/사유/금액/만기일"
   const summary = [
     String(Math.max(0, Math.floor(payload.days))),
     (payload.reasons?.[0] ?? '').trim(),
@@ -767,7 +766,6 @@ const jumpTo = (r: number, c: number) => {
     extRow != null && extCol
       ? (() => {
           const str = (rows[extRow][extCol] ?? '').toString();
-          // 기존 저장 포맷: "일수/사유/금액/만기일"
           const [daysStr = '', reason = '', amountStr = '', endDate = ''] = str.split('/');
 
           const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
@@ -777,12 +775,7 @@ const jumpTo = (r: number, c: number) => {
           })();
           const due = /^\d{4}-\d{2}-\d{2}$/.test(endDate.trim()) ? endDate.trim() : '';
 
-          return {
-            days,
-            reasons: reason ? [reason] : [''],
-            amount,
-            due,
-          };
+          return { days, reasons: reason ? [reason] : [''], amount, due };
         })()
       : undefined
   }
