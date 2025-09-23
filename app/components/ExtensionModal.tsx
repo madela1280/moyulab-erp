@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -26,14 +25,18 @@ const DEFAULT_OPTIONS = ['스토어', '계좌', '서비스', '이벤트', '조�
 
 function loadReasonOptions(): string[] {
   try {
-    const raw = localStorage.getItem(LS_REASON_OPTIONS);
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(LS_REASON_OPTIONS) : null;
     const arr = raw ? JSON.parse(raw) : null;
     if (Array.isArray(arr) && arr.length) return arr;
   } catch {}
   return DEFAULT_OPTIONS.slice();
 }
 function saveReasonOptions(list: string[]) {
-  localStorage.setItem(LS_REASON_OPTIONS, JSON.stringify(list));
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LS_REASON_OPTIONS, JSON.stringify(list));
+    }
+  } catch {}
 }
 
 /** 금액 유틸 */
@@ -124,10 +127,7 @@ export default function ExtensionModal({
     };
   }, [dragging, offset, open]);
 
-  if (!open) {
-    // 모달은 항상 마운트되지만, 닫힐 때는 DOM만 비움 (훅 호출 순서 유지)
-    return <div className="fixed inset-0 z-[1000]" style={{ display: 'none' }} />;
-  }
+  if (!open) return null;
 
   // 사유 선택 핸들러
   const setReason = (v: string) => setReasons([v]);
@@ -347,7 +347,7 @@ export default function ExtensionModal({
                 days: Math.max(0, Math.floor(days)),
                 reasons: [reason.trim()],
                 amount: parseAmount(amountStr),
-                due: (due ?? ''),
+                due: due ?? '',
               };
               onSave(payload);
               onClose();
@@ -361,6 +361,7 @@ export default function ExtensionModal({
     </div>
   );
 }
+
 
 
 

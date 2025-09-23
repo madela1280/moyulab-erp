@@ -10,7 +10,7 @@ import {
 } from '../lib/rules';
 import { GuideRuleModal, CategoryRuleModal } from './RuleModals';
 import FindPanel from './FindPanel';
-import ExtensionModal from './ExtensionModal'; // ★ 추가
+import ExtensionModal from './ExtensionModal';
 
 type Row = Record<string, string>;
 
@@ -37,10 +37,7 @@ const BLANK_ROWS = 20;
 
 const CHECKBOX_W = 28;
 
-const BG_COLORS = ['#FDE68A','#BBF7D0','#BFDBFE','#FCA5A5','#F5D0FE','#DDD6FE','#FECACA','#D1FAE5'];
-const TEXT_COLORS = ['#111827','#EF4444','#2563EB','#16A34A','#F97316','#7C3AED','#6B7280','#8B5E3C'];
-
-/* ▼ 날짜 필터 지원: 연/월 토큰 */
+/* ▼ 날짜 필터 지원 */
 const DATE_COLS = new Set(['택배발송일','시작일','종료일','반납요청일','반납완료일','신청일']);
 const isYMD = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
@@ -60,7 +57,6 @@ function loadColumns(): string[] {
 }
 
 export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라인'|'보건소'|'조리원' }) {
-  // ▼ 화면 플래그
   const isUnified = viewId === '통합관리';
   const isChildView = !isUnified;
 
@@ -262,13 +258,11 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   /** 드래그 선택 & 복사 */
   const tableHostRef = useRef<HTMLDivElement>(null);
 
-  // ▼ 선택 및 찾기 상태
   const [sel, setSel] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
   const [draggingSel, setDraggingSel] = useState(false);
-  const [hl, setHl] = useState<{ r: number; c: number } | null>(null);   // 하이라이트 좌표
-  const [showFind, setShowFind] = useState(false);                       // 찾기 패널 표시 여부
+  const [hl, setHl] = useState<{ r: number; c: number } | null>(null);
+  const [showFind, setShowFind] = useState(false);
 
-  // ▼ 찾기 열 선택 상태 (localStorage 저장/복원)
   const [checkedCols, setCheckedCols] = useState<string[]>(() => {
     const saved = localStorage.getItem('find_checkedCols');
     return saved ? JSON.parse(saved) : ['수취인명','연락처1','연락처2','계약자주소','기기번호'];
@@ -315,7 +309,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     return () => host.removeEventListener('keydown', onKey);
   }, [sel, filteredRows, colsRender]);
 
-  // ▼ 찾기 기능 상태
   const jumpTo = (r: number, c: number) => {
     setSel({ r1: r, c1: c, r2: r, c2: c });
     const host = tableHostRef.current;
@@ -398,14 +391,12 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const [moveOpen, setMoveOpen] = useState(false);
   const [moveDest, setMoveDest] = useState<Category>('온라인');
 
-  // 화면 바뀌면 모달/팝오버 닫기
   useEffect(() => {
     setShowGuide(false);
     setShowCategory(false);
     setMoveOpen(false);
   }, [viewId]);
 
-  // 이동 실행: 선택된 행들의 거래처 기준으로 규칙 갱신 후 카테고리 뷰 재구성
   const doMove = () => {
     const vendors = Object.keys(checked)
       .filter(k => checked[+k])
@@ -421,7 +412,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     }
   };
 
-  // 행 값 변경시 자동 적용(거래처→안내분류, 기기번호→기기정보)
   const deviceIndexRef = useRef<Record<string, any> | null>(null);
   const ensureDeviceIdx = () => { if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex(); };
 
@@ -431,12 +421,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const [extCol, setExtCol] = useState<string|null>(null);
   const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
 
-  // ★ ExtensionModal과 계약 맞춘 저장 핸들러
   const handleSaveExt = (payload:{ days:number; reasons:string[]; amount:number; due:string }) => {
     if (extRow == null || !extCol) return;
 
     const next = rows.map(r => ({ ...r }));
-    // 셀에는 사람이 읽기 쉬운 포맷으로 저장: "일수/사유/금액/만기일"
     const summary = [
       String(Math.max(0, Math.floor(payload.days))),
       (payload.reasons?.[0] ?? '').trim(),
@@ -446,12 +434,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
     next[extRow][extCol] = summary;
 
-    // 총연장횟수 갱신
     const count = ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장']
       .filter(c=> (next[extRow][c] ?? '').toString().trim() !== '').length;
     next[extRow]['총연장횟수'] = `${count}회`;
 
-    // 종료일 자동 업데이트 (만기일 입력 시)
     if ((payload.due||'').trim()) next[extRow]['종료일'] = payload.due.trim();
 
     saveRows(next);
@@ -464,7 +450,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
       <div className="px-4 py-3 font-semibold border-b flex items-center gap-2">
         <span className={isUnified ? 'text-blue-700' : ''}>{viewId}</span>
 
-        {/* ▼ 버튼들 (조건부 렌더링) */}
         {isUnified && (
           <>
             <button
@@ -543,7 +528,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
           <ColorMenu onApply={applyColor} />
 
-          {/* ▼ 찾기 버튼 + 패널 */}
           <div className="relative">
             <button
               className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
@@ -576,8 +560,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         <div
           ref={tableHostRef}
           tabIndex={0}
-          /* ▼ 높이 조정: -220px → -40px 으로 줄여서 한 줄~한 줄 반 더 보이게 */
-          className="w-full max-h-[calc(100vh-40px)] overflow-auto border rounded outline-none"
+          className="w-full max-h-[calc(100vh-150px)] overflow-auto border rounded outline-none"
         >
           <table className="min-w-[3200px] w-max text-sm border-collapse">
             <colgroup>
@@ -593,7 +576,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                   const activeFilter = (filters[c]?.size ?? 0) > 0 || !!sortMap[c];
                   const allowFilter = true;
                   return (
-                    <th key={c} className="border px-2 py-[0.16rem] text-[0.74rem] text-gray-900 relative select-none">
+                    <th key={c} className="border px-2 py-[0.16rem] text-[0.74rem] text-gray-700 relative select-none">
                       <div className={`flex items-center gap-2 ${c==='계약자주소'?'justify-center':'justify-start'}`}>
                         <span className="whitespace-nowrap">{label(c)}</span>
 
@@ -687,7 +670,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                               const next = prev.map(r => ({ ...r }));
                               next[rIdx][c] = v;
 
-                              // 자동 적용: 거래처/기기번호 변경 시
                               if (c === '거래처분류' || c === '기기번호') {
                                 if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex();
                                 applyAutoToRowInPlace(next[rIdx], deviceIndexRef.current || undefined);
@@ -743,11 +725,9 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         </div>
       )}
 
-      {/* 규칙 모달 (통합관리에서만 표시) */}
       {isUnified && <GuideRuleModal open={showGuide} onClose={()=>setShowGuide(false)} />}
       {isUnified && <CategoryRuleModal open={showCategory} onClose={()=>setShowCategory(false)} />}
 
-      {/* 찾기 패널 — ★ 이 블록만 한 군데 렌더 */}
       {showFind && (
         <FindPanel
           rows={rows}
@@ -761,13 +741,13 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         />
       )}
 
-      {/* ★ 연장 입력 모달 (최소 수정: 계약 일치) */}
+      {/* ★ 연장 입력 모달 */}
       <ExtensionModal
         open={showExt}
         initial={
           extRow!=null && extCol ? (()=>{ 
             const str = (rows[extRow][extCol] ?? '').toString();
-            // 기존 저장 포맷: "일수/사유/금액/만기일"
+            // 저장 포맷: "일수/사유/금액/만기일"
             const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
             const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
             const amount = (() => {
@@ -899,6 +879,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
