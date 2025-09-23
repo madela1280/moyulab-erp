@@ -429,26 +429,32 @@ const jumpTo = (r: number, c: number) => {
   const [showExt, setShowExt] = useState(false);
   const [extRow, setExtRow] = useState<number|null>(null);
   const [extCol, setExtCol] = useState<string|null>(null);
-  const [reasons, setReasons] = useState<string[]>(['스토어','계좌','서비스','이벤트','조리원']);
   const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
-  const handleSaveExt = (data:{days:string;reason:string;amount:string;endDate:string}) => {
-    if (extRow==null || !extCol) return;
-    const next = rows.map(r=>({...r}));
-    // 셀에는 사람이 읽기 쉬운 포맷으로 저장: "일수/사유/금액/만기일"
-    const summary = [data.days||'', data.reason||'', data.amount||'', data.endDate||''].join('/');
-    next[extRow][extCol] = summary;
+  const handleSaveExt = (payload:{ days:number; reasons:string[]; amount:number; due:string }) => {
+  if (extRow == null || !extCol) return;
 
-    // 총연장횟수 갱신
-    const count = ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장']
-      .filter(c=> (next[extRow][c] ?? '').toString().trim() !== '').length;
-    next[extRow]['총연장횟수'] = `${count}회`;
+  const next = rows.map(r => ({ ...r }));
+  // 저장 포맷: "일수/사유/금액/만기일"
+  const summary = [
+    String(Math.max(0, Math.floor(payload.days))),
+    (payload.reasons?.[0] ?? '').trim(),
+    String(payload.amount),
+    (payload.due ?? '').trim(),
+  ].join('/');
 
-    // 종료일 자동 업데이트 (만기일 입력 시)
-    if ((data.endDate||'').trim()) next[extRow]['종료일'] = data.endDate;
+  next[extRow][extCol] = summary;
 
-    saveRows(next);
-    setShowExt(false); setExtRow(null); setExtCol(null);
-  };
+  // 총연장횟수 갱신
+  const count = ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장']
+    .filter(c => (next[extRow][c] ?? '').toString().trim() !== '').length;
+  next[extRow]['총연장횟수'] = `${count}회`;
+
+  // 만기일(due) 있으면 종료일 갱신
+  if ((payload.due || '').trim()) next[extRow]['종료일'] = payload.due!.trim();
+
+  saveRows(next);
+  setShowExt(false); setExtRow(null); setExtCol(null);
+};
 
   return (
     <div className="bg-white border rounded shadow-sm">
@@ -755,19 +761,35 @@ const jumpTo = (r: number, c: number) => {
         />
       )}
 
-      {/* ★ 연장 입력 모달 (추가) */}
-      <ExtensionModal
-        open={showExt}
-        initial={extRow!=null && extCol ? (()=>{ 
+      {/* ★ 연장 입력 모달 */}
+<ExtensionModal
+  open={showExt}
+  initial={
+    extRow != null && extCol
+      ? (() => {
           const str = (rows[extRow][extCol] ?? '').toString();
-          const [days='',reason='',amount='',endDate=''] = str.split('/');
-          return { days, reason, amount, endDate };
-        })(): undefined}
-        reasons={reasons}
-        onAddReason={(r)=>setReasons(prev=>prev.includes(r)?prev:[...prev,r])}
-        onSave={handleSaveExt}
-        onClose={()=>setShowExt(false)}
-      />
+          // 기존 저장 포맷: "일수/사유/금액/만기일"
+          const [daysStr = '', reason = '', amountStr = '', endDate = ''] = str.split('/');
+
+          const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
+          const amount = (() => {
+            const n = Number((amountStr || '').replace(/[^\d.-]/g, ''));
+            return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+          })();
+          const due = /^\d{4}-\d{2}-\d{2}$/.test(endDate.trim()) ? endDate.trim() : '';
+
+          return {
+            days,
+            reasons: reason ? [reason] : [''],
+            amount,
+            due,
+          };
+        })()
+      : undefined
+  }
+  onSave={handleSaveExt}
+  onClose={() => setShowExt(false)}
+/>
 
     </div>
   );
