@@ -16,9 +16,18 @@ export function loadUnifiedRows(): Row[] {
     return Array.isArray(arr) ? arr : [];
   } catch { return []; }
 }
+
+/**
+ * 통합관리 저장:
+ * - unified_rows 저장
+ * - unified_rows_updated 이벤트 발생
+ * - (추가) 카테고리 뷰 즉시 재구성 → 소카테고리 동기화 보장
+ */
 export function saveUnifiedRows(rows: Row[]) {
   localStorage.setItem(LS_UNIFIED_ROWS, JSON.stringify(rows));
   window.dispatchEvent(new Event('unified_rows_updated'));
+  // ★ 추가: 저장 직후 카테고리 뷰 재빌드 (동일 탭 즉시 반영)
+  try { rebuildCategoryViewsFromRules(); } catch {}
 }
 
 export function loadGuideMap(): Record<string, string> {
@@ -283,16 +292,24 @@ if (typeof window !== 'undefined') {
   window.addEventListener('unified_rows_updated', tickStatus);
   window.addEventListener('device_rows_updated', tickDevice);
 
+  // ★ 추가: unified_rows 갱신 시 카테고리 뷰도 즉시 재구성 (같은 탭에서의 직접 수정 포함)
+  window.addEventListener('unified_rows_updated', () => {
+    try { rebuildCategoryViewsFromRules(); } catch {}
+  });
+
   window.addEventListener('storage', (e: StorageEvent) => {
-    if (!e.key) { tickStatus(); tickDevice(); return; }
-    if (e.key === LS_UNIFIED_ROWS) tickStatus();
+    if (!e.key) { tickStatus(); tickDevice(); try { rebuildCategoryViewsFromRules(); } catch {} return; }
+    if (e.key === LS_UNIFIED_ROWS) { tickStatus(); try { rebuildCategoryViewsFromRules(); } catch {} }
     if (e.key.startsWith('device_rows:')) tickDevice();
   });
 
   // 주기적 재계산(30분마다) → 날짜 바뀌거나 외부수정 시 자동 반영
   setInterval(() => { tickStatus(); tickDevice(); }, 30 * 60 * 1000);
 
-  // 초기 1회
-  setTimeout(() => { tickStatus(); tickDevice(); }, 0);
+  // 초기 1회 (상태/기기메타 재계산 + 카테고리 뷰 재구성)
+  setTimeout(() => { 
+    try { tickStatus(); tickDevice(); rebuildCategoryViewsFromRules(); } catch {}
+  }, 0);
 }
+
 
