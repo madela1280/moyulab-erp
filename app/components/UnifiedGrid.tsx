@@ -57,7 +57,8 @@ function loadColumns(): string[] {
 }
 
 export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라인'|'보건소'|'조리원' }) {
-  const isUnified = viewId === '통합관리';
+  const vId = (viewId || '').trim();           // ← 공백/예상치 못한 문자열 방어
+  const isUnified = vId === '통합관리';
   const isChildView = !isUnified;
 
   /** columns */
@@ -69,7 +70,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const [rows, setRows] = useState<Row[]>([]);
   const loadRows = () => {
     try {
-      const raw = localStorage.getItem(storageKeyFor(viewId));
+     const raw = localStorage.getItem(storageKeyFor(vId));
       const list = raw ? JSON.parse(raw) : [];
       if (Array.isArray(list) && list.length) setRows(list);
       else {
@@ -86,7 +87,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   };
 
   /** column widths (저장/복구) + 드래그 리사이즈 */
-  const COLW_KEY = COLW_PREFIX + viewId;
+  const COLW_KEY = COLW_PREFIX + vId;
   const [colW, setColW] = useState<Record<string, number>>({});
   useEffect(() => {
     const raw = localStorage.getItem(COLW_KEY);
@@ -453,7 +454,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     <div className="bg-white border rounded shadow-sm">
       {/* 헤더 바 */}
       <div className="px-4 py-3 font-semibold border-b flex items-center gap-2">
-        <span className={isUnified ? 'text-blue-700' : ''}>{viewId}</span>
+        <span className={isUnified ? 'text-blue-700' : ''}>{vId}</span>
 
         {isUnified && (
           <>
