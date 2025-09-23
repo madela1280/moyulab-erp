@@ -419,27 +419,26 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const [showExt, setShowExt] = useState(false);
   const [extRow, setExtRow] = useState<number|null>(null);
   const [extCol, setExtCol] = useState<string|null>(null);
-  const isExtCol = (c:string) => ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
+  const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
   const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
 
-  const handleSaveExt = (payload:{ days:number; reasons:string[]; amount:number; due:string }) => {
-    if (extRow == null || !extCol) return;
+  const handleSaveExt = (data:{days:number; reasons:string[]; amount:number; due:string}) => {
+    if (extRow==null || !extCol) return;
 
-    const next = rows.map(r => ({ ...r }));
+    const next = rows.map(r=>({...r}));
     const summary = [
-      String(Math.max(0, Math.floor(payload.days))),
-      (payload.reasons?.[0] ?? '').trim(),
-      String(payload.amount),
-      (payload.due ?? '').trim(),
+      String(Math.max(0, Math.floor(data.days))),
+      (data.reasons?.[0] ?? '').trim(),
+      String(Math.max(0, Math.floor(data.amount))),
+      (data.due ?? '').trim()
     ].join('/');
 
     next[extRow][extCol] = summary;
 
-    const count = ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장']
-      .filter(c=> (next[extRow][c] ?? '').toString().trim() !== '').length;
+    const count = colsRender.filter(c => isExtCol(c)).filter(c => (next[extRow][c] ?? '').toString().trim() !== '').length;
     next[extRow]['총연장횟수'] = `${count}회`;
 
-    if ((payload.due||'').trim()) next[extRow]['종료일'] = payload.due.trim();
+    if ((data.due||'').trim()) next[extRow]['종료일'] = data.due.trim();
 
     saveRows(next);
     setShowExt(false); setExtRow(null); setExtCol(null);
@@ -525,7 +524,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
               document.body.appendChild(a); a.click();
               document.body.removeChild(a); URL.revokeObjectURL(url);
             }}
-          >다운로드(엑셀)</button>
+          >डाउन로드(엑셀)</button>
 
           <ColorMenu onApply={applyColor} />
 
@@ -561,7 +560,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         <div
           ref={tableHostRef}
           tabIndex={0}
-          className="w-full max-h-[calc(100vh-156px)] overflow-auto border rounded outline-none"
+          className="w-full max-h-[calc(100vh-155px)] overflow-auto border rounded outline-none"
         >
           <table className="min-w-[3200px] w-max text-sm border-collapse">
             <colgroup>
@@ -648,7 +647,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                     const val = row[c] ?? '';
 
                     const handleCellClick = () => {
-                      if (isExtCol(c)) openExt(rIdx, c); // ★ 클릭으로 열기
+                      if (isExtCol(c)) openExt(rIdx, c);
                     };
 
                     return (
@@ -661,7 +660,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                         onMouseEnter={() => extendSel(rIdx, ci)}
                         onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
                         style={{ background: style.bg, color: style.color }}
-                        onClick={handleCellClick}  // ★ 단일 클릭 핸들러
+                        onClick={handleCellClick}  // ★ 클릭으로 모달 열기
                       >
                         <input
                           className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0"
@@ -681,7 +680,9 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                           }}
                           onBlur={() => saveRows(rows)}
                           onPaste={(e) => onPaste(rIdx, c, e)}
-                          onClick={(e)=>{ if (isExtCol(c)) { e.stopPropagation(); openExt(rIdx, c); } }} // ★ 인풋 클릭도 모달 열림
+                          onClick={(e) => {
+                            if (isExtCol(c)) { e.stopPropagation(); openExt(rIdx, c); }
+                          }}
                         />
                       </td>
                     );
@@ -752,12 +753,14 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
             const str = (rows[extRow][extCol] ?? '').toString();
             // 저장 포맷: "일수/사유/금액/만기일"
             const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
+
             const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
-            const amount = (() => {
-              const n = Number((amountStr || '').replace(/[^\d.-]/g, ''));
-              return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
-            })();
-            const due = /^\d{4}-\d{2}-\d{2}$/.test(endDate.trim()) ? endDate.trim() : '';
+
+            const amountNum = Number((amountStr || '').replace(/[^\d.-]/g, ''));
+            const amount = Number.isFinite(amountNum) ? Math.max(0, Math.floor(amountNum)) : 0;
+
+            const due = /^\d{4}-\d{2}-\d{2}$/.test((endDate || '').trim()) ? (endDate || '').trim() : '';
+
             return { days, reasons: reason ? [reason] : [''], amount, due };
           })(): undefined
         }
@@ -882,6 +885,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
