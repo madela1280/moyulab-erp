@@ -395,7 +395,12 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     setShowGuide(false);
     setShowCategory(false);
     setMoveOpen(false);
-  }, [viewId]);
+    // ▼ 소카테고리로 전환 시 편집 UI 상태 초기화
+    if (isChildView) {
+      setReorderMode(false);
+      setShowAdd(false);
+    }
+  }, [viewId]); // view 변경 시 초기화
 
   const doMove = () => {
     const vendors = Object.keys(checked)
@@ -417,30 +422,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
   // ★ 연장 모달 상태/핸들러 (클릭으로 열림)
   const [showExt, setShowExt] = useState(false);
-const [extRow, setExtRow] = useState<number|null>(null);
-const [extCol, setExtCol] = useState<string|null>(null);
-const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
-
-// 화면 rIdx → 원본 rows 인덱스로 변환 (필터/정렬/빈행보충 대비)
-const openExt = (rIdx:number, col:string) => {
-  const viewRow = data[rIdx];
-  if (!viewRow) return;
-
-  // 1차: 참조 동일성으로 매칭
-  let baseIdx = rows.indexOf(viewRow);
-
-  // 2차: 참조가 달라도 내용이 동일하면 매칭 (필터/정렬/복제 등 대비)
-  if (baseIdx < 0) {
-    baseIdx = rows.findIndex(r =>
-      r === viewRow || colsRender.every(k => (r?.[k] ?? '') === (viewRow?.[k] ?? ''))
-    );
-  }
-
-  if (baseIdx < 0) return; // 빈 보충행 등은 무시
-  setExtRow(baseIdx);
-  setExtCol(col);
-  setShowExt(true);
-};
+  const [extRow, setExtRow] = useState<number|null>(null);
+  const [extCol, setExtCol] = useState<string|null>(null);
+  const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
+  const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
 
   const handleSaveExt = (data:{days:number; reasons:string[]; amount:number; due:string}) => {
     if (extRow==null || !extCol) return;
@@ -556,23 +541,26 @@ const openExt = (rIdx:number, col:string) => {
           </div>
         </div>
         
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-            onClick={() => {
-              const next = rows.concat(
-                Array.from({ length: 10 }, () => Object.fromEntries(colsRender.map(c => [c, ''])))
-              );
-              saveRows(next);
-            }}
-          >행 10 추가</button>
+        {/* ▼ 요청사항: 소카테고리에서는 4개 버튼 숨김 */}
+        {isUnified && (
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+              onClick={() => {
+                const next = rows.concat(
+                  Array.from({ length: 10 }, () => Object.fromEntries(colsRender.map(c => [c, ''])))
+                );
+                saveRows(next);
+              }}
+            >행 10 추가</button>
 
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
+            <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
 
-          <button className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`} onClick={() => setReorderMode(v => !v)}>열 이동 모드</button>
+            <button className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`} onClick={() => setReorderMode(v => !v)}>열 이동 모드</button>
 
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
-        </div>
+            <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
+          </div>
+        )}
       </div>
 
       {/* 표 */}
@@ -608,7 +596,8 @@ const openExt = (rIdx:number, col:string) => {
                           >▼</button>
                         )}
 
-                        {reorderMode && (
+                        {/* ▼ 소카테고리에서는 열 이동/삭제 UI도 숨김 */}
+                        {isUnified && reorderMode && (
                           <span className="flex gap-1">
                             <button className="px-1 text-xs border rounded hover:bg-gray-50" onClick={() => moveCol(idx, -1)} title="왼쪽으로">◀</button>
                             <button className="px-1 text-xs border rounded hover:bg-gray-50" onClick={() => moveCol(idx, 1)} title="오른쪽으로">▶</button>
@@ -714,8 +703,8 @@ const openExt = (rIdx:number, col:string) => {
         </div>
       </div>
 
-      {/* 양식 추가 모달 */}
-      {showAdd && (
+      {/* 양식 추가 모달: 소카테고리에서는 뜨지 않도록 */}
+      {isUnified && showAdd && (
         <div className="fixed inset-0 z-40 bg-black/30 flex items-center justify-center">
           <div className="bg-white w-[520px] max-w-[95vw] rounded shadow">
             <div className="px-4 py-3 border-b font-semibold">양식 추가(열)</div>
@@ -765,28 +754,28 @@ const openExt = (rIdx:number, col:string) => {
         />
       )}
 
-      {/* ★ 연장 입력 모달 */}
-      {/* ★ 연장 입력 모달: showExt일 때만 마운트 */}
-{showExt && (
-  <ExtensionModal
-    open={true}
-    initial={
-      extRow!=null && extCol ? (()=>{ 
-        const str = (rows[extRow]?.[extCol] ?? '').toString();  // ← 안전 가드(?.) 추가
-        const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
+      {/* ★ 연장 입력 모달 (원래 흐름 그대로 유지) */}
+      <ExtensionModal
+        open={showExt}
+        initial={
+          extRow!=null && extCol ? (()=>{ 
+            const str = (rows[extRow][extCol] ?? '').toString();
+            // 저장 포맷: "일수/사유/금액/만기일"
+            const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
 
-        const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
-        const amountNum = Number((amountStr || '').replace(/[^\d.-]/g, ''));
-        const amount = Number.isFinite(amountNum) ? Math.max(0, Math.floor(amountNum)) : 0;
-        const due = /^\d{4}-\d{2}-\d{2}$/.test((endDate || '').trim()) ? (endDate || '').trim() : '';
+            const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
 
-        return { days, reasons: reason ? [reason] : [''], amount, due };
-      })(): undefined
-    }
-    onSave={handleSaveExt}
-    onClose={() => { setShowExt(false); setExtRow(null); setExtCol(null); }}
-  />
-)}
+            const amountNum = Number((amountStr || '').replace(/[^\d.-]/g, ''));
+            const amount = Number.isFinite(amountNum) ? Math.max(0, Math.floor(amountNum)) : 0;
+
+            const due = /^\d{4}-\d{2}-\d{2}$/.test((endDate || '').trim()) ? (endDate || '').trim() : '';
+
+            return { days, reasons: reason ? [reason] : [''], amount, due };
+          })(): undefined
+        }
+        onSave={handleSaveExt}
+        onClose={()=>setShowExt(false)}
+      />
     </div>
   );
 }
@@ -824,7 +813,7 @@ function ExcelFilterPopover({
   };
 
   return (
-    <div className="absolute z-40 mt-1 w-[260px] bg-white border rounded shadow">
+    <div className="absolute z-40 mt-1 w:[260px] bg-white border rounded shadow">
       <div className="p-2 border-b text-sm font-semibold">{title}</div>
 
       <div className="p-2 flex gap-2">
@@ -905,6 +894,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
