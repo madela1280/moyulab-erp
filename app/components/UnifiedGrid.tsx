@@ -10,6 +10,7 @@ import {
 } from '../lib/rules';
 import { GuideRuleModal, CategoryRuleModal } from './RuleModals';
 import FindPanel from './FindPanel';
+import ExtensionModal from './ExtensionModal';   // ★ 추가
 
 type Row = Record<string, string>;
 
@@ -76,10 +77,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
       const list = raw ? JSON.parse(raw) : [];
       if (Array.isArray(list) && list.length) setRows(list);
       else {
-        setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
+        setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, ''])));
       }
     } catch {
-      setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
+      setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, ''])));
     }
   };
   const saveRows = (next: Row[]) => {
@@ -424,6 +425,31 @@ const jumpTo = (r: number, c: number) => {
   const deviceIndexRef = useRef<Record<string, any> | null>(null);
   const ensureDeviceIdx = () => { if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex(); };
 
+  // ★ 연장 모달 상태/핸들러 (기존 흐름 영향 없음)
+  const [showExt, setShowExt] = useState(false);
+  const [extRow, setExtRow] = useState<number|null>(null);
+  const [extCol, setExtCol] = useState<string|null>(null);
+  const [reasons, setReasons] = useState<string[]>(['스토어','계좌','서비스','이벤트','조리원']);
+  const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
+  const handleSaveExt = (data:{days:string;reason:string;amount:string;endDate:string}) => {
+    if (extRow==null || !extCol) return;
+    const next = rows.map(r=>({...r}));
+    // 셀에는 사람이 읽기 쉬운 포맷으로 저장: "일수/사유/금액/만기일"
+    const summary = [data.days||'', data.reason||'', data.amount||'', data.endDate||''].join('/');
+    next[extRow][extCol] = summary;
+
+    // 총연장횟수 갱신
+    const count = ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장']
+      .filter(c=> (next[extRow][c] ?? '').toString().trim() !== '').length;
+    next[extRow]['총연장횟수'] = `${count}회`;
+
+    // 종료일 자동 업데이트 (만기일 입력 시)
+    if ((data.endDate||'').trim()) next[extRow]['종료일'] = data.endDate;
+
+    saveRows(next);
+    setShowExt(false); setExtRow(null); setExtCol(null);
+  };
+
   return (
     <div className="bg-white border rounded shadow-sm">
       {/* 헤더 바 */}
@@ -639,6 +665,11 @@ const jumpTo = (r: number, c: number) => {
                          onMouseEnter={() => extendSel(rIdx, ci)}
                          onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
                          style={{ background: style.bg, color: style.color }}
+                         onDoubleClick={()=>{
+                           if (['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c)) {
+                             openExt(rIdx, c);
+                           }
+                         }}
                       >
 
                         <input
@@ -723,6 +754,20 @@ const jumpTo = (r: number, c: number) => {
           onClose={() => { setShowFind(false); setHl(null); }}
         />
       )}
+
+      {/* ★ 연장 입력 모달 (추가) */}
+      <ExtensionModal
+        open={showExt}
+        initial={extRow!=null && extCol ? (()=>{ 
+          const str = (rows[extRow][extCol] ?? '').toString();
+          const [days='',reason='',amount='',endDate=''] = str.split('/');
+          return { days, reason, amount, endDate };
+        })(): undefined}
+        reasons={reasons}
+        onAddReason={(r)=>setReasons(prev=>prev.includes(r)?prev:[...prev,r])}
+        onSave={handleSaveExt}
+        onClose={()=>setShowExt(false)}
+      />
 
     </div>
   );
@@ -842,6 +887,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
