@@ -431,6 +431,7 @@ const jumpTo = (r: number, c: number) => {
   const [extCol, setExtCol] = useState<string|null>(null);
   const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
   const handleSaveExt = (payload:{ days:number; reasons:string[]; amount:number; due:string }) => {
+  const handleSaveExt = (payload:{ days:number; reasons:string[]; amount:number; due:string }) => {
   if (extRow == null || !extCol) return;
 
   const next = rows.map(r => ({ ...r }));
@@ -444,12 +445,10 @@ const jumpTo = (r: number, c: number) => {
 
   next[extRow][extCol] = summary;
 
-  // 총연장횟수 갱신
   const count = ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장']
     .filter(c => (next[extRow][c] ?? '').toString().trim() !== '').length;
   next[extRow]['총연장횟수'] = `${count}회`;
 
-  // 만기일(due) 있으면 종료일 갱신
   if ((payload.due || '').trim()) next[extRow]['종료일'] = payload.due!.trim();
 
   saveRows(next);
