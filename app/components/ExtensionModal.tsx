@@ -6,16 +6,16 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onSave: (data: {
-    days: number;
-    reasons: string[];
-    amount: number;
-    due: string; // YYYY-MM-DD
+    days: string;
+    reason: string;
+    amount: string;
+    endDate: string;
   }) => void;
   initial?: {
-    days?: number;
-    reasons?: string[];
-    amount?: number;
-    due?: string; // YYYY-MM-DD
+    days?: string;
+    reason?: string;
+    amount?: string;
+    endDate?: string;
   };
   anchorPoint?: { x: number; y: number };
 };
