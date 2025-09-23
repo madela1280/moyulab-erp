@@ -7,15 +7,15 @@ type Props = {
   onClose: () => void;
   onSave: (data: {
     days: number;
-    reasons: string[];
+    reasons: string[];   // 단일 선택이어도 배열 형태로 전달
     amount: number;
-    due: string; // YYYY-MM-DD
+    due: string;         // YYYY-MM-DD
   }) => void;
   initial?: {
     days?: number;
-    reasons?: string[];
+    reasons?: string[];  // ['스토어'] 형태 기대
     amount?: number;
-    due?: string; // YYYY-MM-DD
+    due?: string;        // YYYY-MM-DD
   };
   anchorPoint?: { x: number; y: number };
 };
@@ -23,9 +23,10 @@ type Props = {
 const LS_REASON_OPTIONS = 'extension_reason_options';
 const DEFAULT_OPTIONS = ['스토어', '계좌', '서비스', '이벤트', '조리원'];
 
+/* 로컬스토리지 유틸 */
 function loadReasonOptions(): string[] {
   try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem(LS_REASON_OPTIONS) : null;
+    const raw = localStorage.getItem(LS_REASON_OPTIONS);
     const arr = raw ? JSON.parse(raw) : null;
     if (Array.isArray(arr) && arr.length) return arr;
   } catch {}
@@ -33,13 +34,11 @@ function loadReasonOptions(): string[] {
 }
 function saveReasonOptions(list: string[]) {
   try {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LS_REASON_OPTIONS, JSON.stringify(list));
-    }
+    localStorage.setItem(LS_REASON_OPTIONS, JSON.stringify(list));
   } catch {}
 }
 
-/** 금액 유틸 */
+/* 금액 유틸 */
 function parseAmount(s: string): number {
   const n = Number((s || '').toString().replace(/[^\d.-]/g, ''));
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
@@ -48,14 +47,12 @@ function formatAmount(n: number): string {
   const v = Number.isFinite(n) ? n : 0;
   return v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
-function pad2(s: string) {
-  return s.length === 1 ? '0' + s : s;
-}
+
+/* 날짜 유틸 */
+function pad2(s: string) { return s.length === 1 ? '0' + s : s; }
 function makeDate(y: string, m: string, d: string): string | null {
   if (y.length !== 4 || m.length === 0 || d.length === 0) return null;
-  const yy = Number(y);
-  const mm = Number(m);
-  const dd = Number(d);
+  const yy = Number(y), mm = Number(m), dd = Number(d);
   if (!Number.isFinite(yy) || !Number.isFinite(mm) || !Number.isFinite(dd)) return null;
   if (mm < 1 || mm > 12) return null;
   if (dd < 1 || dd > 31) return null;
@@ -69,42 +66,7 @@ export default function ExtensionModal({
   initial,
   anchorPoint,
 }: Props) {
-  // 연장일수
-  const [days, setDays] = useState<number>(initial?.days ?? 0);
-
-  // 사유(단일 선택)
-  const [reasons, setReasons] = useState<string[]>(
-    initial?.reasons && initial.reasons.length ? [initial.reasons[0]] : ['']
-  );
-  const reason = reasons[0] ?? '';
-
-  // 선택지
-  const [reasonOptions, setReasonOptions] = useState<string[]>([]);
-  useEffect(() => {
-    if (open) setReasonOptions(loadReasonOptions());
-  }, [open]);
-
-  // 금액
-  const [amountStr, setAmountStr] = useState<string>(() =>
-    formatAmount(initial?.amount ?? 0)
-  );
-
-  // 만기일
-  const [dueY, setDueY] = useState<string>('');
-  const [dueM, setDueM] = useState<string>('');
-  const [dueD, setDueD] = useState<string>('');
-  useEffect(() => {
-    const d = (initial?.due ?? '').trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
-      setDueY(d.slice(0, 4));
-      setDueM(d.slice(5, 7));
-      setDueD(d.slice(8, 10));
-    } else {
-      setDueY(''); setDueM(''); setDueD('');
-    }
-  }, [initial?.due]);
-
-  // 드래그 이동
+  /** 위치/드래그 **/
   const [pos, setPos] = useState<{ x: number; y: number }>(() => ({
     x: anchorPoint?.x ?? 80,
     y: anchorPoint?.y ?? 60,
@@ -112,6 +74,7 @@ export default function ExtensionModal({
   const [dragging, setDragging] = useState(false);
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const boxRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const onMove = (e: MouseEvent) => {
@@ -129,7 +92,39 @@ export default function ExtensionModal({
 
   if (!open) return null;
 
-  // 선택 처리
+  /** 상태값 (초기값 안전 파싱) */
+  const initDays = Number.isFinite(Number(initial?.days)) ? Number(initial?.days) : 0;
+  const initReason = (initial?.reasons && initial.reasons.length ? initial.reasons[0] : '') || '';
+  const initAmount = Number.isFinite(Number(initial?.amount)) ? Number(initial?.amount) : 0;
+  const initDue = (initial?.due || '').trim();
+
+  const [days, setDays] = useState<number>(initDays);
+  const [reasons, setReasons] = useState<string[]>([initReason]); // 단일 선택 유지
+  const reason = reasons[0] ?? '';
+
+  const [reasonOptions, setReasonOptions] = useState<string[]>([]);
+  useEffect(() => {
+    if (open) setReasonOptions(loadReasonOptions());
+  }, [open]);
+
+  const [amountStr, setAmountStr] = useState<string>(formatAmount(initAmount));
+
+  const [dueY, setDueY] = useState<string>('');
+  const [dueM, setDueM] = useState<string>('');
+  const [dueD, setDueD] = useState<string>('');
+  useEffect(() => {
+    const d = initDue;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      setDueY(d.slice(0, 4));
+      setDueM(d.slice(5, 7));
+      setDueD(d.slice(8, 10));
+    } else {
+      setDueY(''); setDueM(''); setDueD('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initDue]);
+
+  /** 선택 처리 */
   const setReason = (v: string) => setReasons([v]);
 
   const handleSelectReason = (value: string) => {
@@ -155,26 +150,20 @@ export default function ExtensionModal({
     setReason(value);
   };
 
-  // 삭제 모드
+  /** 삭제 모드 */
   const [deleteMode, setDeleteMode] = useState(false);
   const [deleteChecks, setDeleteChecks] = useState<string[]>([]);
-  const toggleDeleteMode = () => {
-    setDeleteMode((v) => !v);
-    setDeleteChecks([]);
-  };
+  const toggleDeleteMode = () => { setDeleteMode(v => !v); setDeleteChecks([]); };
   const handleDeleteApply = () => {
-    if (!deleteChecks.length) {
-      setDeleteMode(false);
-      return;
-    }
-    const next = reasonOptions.filter((opt) => !deleteChecks.includes(opt));
+    if (!deleteChecks.length) { setDeleteMode(false); return; }
+    const next = reasonOptions.filter(opt => !deleteChecks.includes(opt));
     setReasonOptions(next);
     saveReasonOptions(next);
-    setDeleteChecks([]);
-    setDeleteMode(false);
+    setDeleteChecks([]); setDeleteMode(false);
     if (next.indexOf(reason) === -1 && reason !== '') setReason('');
   };
 
+  /** 파생값 */
   const parsedAmount = parseAmount(amountStr);
   const due = makeDate(dueY, dueM, dueD);
 
@@ -185,6 +174,7 @@ export default function ExtensionModal({
     parsedAmount < 0 ||
     !reason.trim();
 
+  /** 렌더 */
   return (
     <div className="fixed inset-0 z-[1000]">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
@@ -270,13 +260,9 @@ export default function ExtensionModal({
               value={reasonOptions.includes(reason) || reason === '' ? reason : ''}
               onChange={(e) => handleSelectReason(e.target.value)}
             >
-              <option value="" disabled>
-                사유 선택
-              </option>
+              <option value="" disabled>사유 선택</option>
               {reasonOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
+                <option key={opt} value={opt}>{opt}</option>
               ))}
               <option value="__CUSTOM__">직접입력…</option>
               <option value="__ADD__">입력추가…</option>
@@ -289,9 +275,7 @@ export default function ExtensionModal({
             <input
               inputMode="numeric"
               value={amountStr}
-              onChange={(e) =>
-                setAmountStr(formatAmount(parseAmount(e.target.value)))
-              }
+              onChange={(e) => setAmountStr(formatAmount(parseAmount(e.target.value)))}
               className="w-full border rounded px-2 py-1"
               placeholder="예: 50,000"
             />
@@ -305,25 +289,19 @@ export default function ExtensionModal({
                 className="w-[90px] border rounded px-2 py-1"
                 placeholder="YYYY"
                 value={dueY}
-                onChange={(e) =>
-                  setDueY(e.target.value.replace(/\D/g, '').slice(0, 4))
-                }
+                onChange={(e) => setDueY(e.target.value.replace(/\D/g, '').slice(0, 4))}
               />
               <input
                 className="w-[60px] border rounded px-2 py-1"
                 placeholder="MM"
                 value={dueM}
-                onChange={(e) =>
-                  setDueM(e.target.value.replace(/\D/g, '').slice(0, 2))
-                }
+                onChange={(e) => setDueM(e.target.value.replace(/\D/g, '').slice(0, 2))}
               />
               <input
                 className="w-[60px] border rounded px-2 py-1"
                 placeholder="DD"
                 value={dueD}
-                onChange={(e) =>
-                  setDueD(e.target.value.replace(/\D/g, '').slice(0, 2))
-                }
+                onChange={(e) => setDueD(e.target.value.replace(/\D/g, '').slice(0, 2))}
               />
             </div>
           </div>
@@ -338,19 +316,16 @@ export default function ExtensionModal({
           </button>
           <button
             className={`px-3 py-1.5 text-sm rounded text-white ${
-              disabled
-                ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
+              disabled ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
             }`}
             onClick={() => {
               if (disabled) return;
-              const payload = {
+              onSave({
                 days: Math.max(0, Math.floor(days)),
                 reasons: [reason.trim()],
-                amount: parsedAmount,
-                due: due ?? '',
-              };
-              onSave(payload);
+                amount: parseAmount(amountStr),
+                due: makeDate(dueY, dueM, dueD)!,
+              });
               onClose();
             }}
             disabled={disabled}
