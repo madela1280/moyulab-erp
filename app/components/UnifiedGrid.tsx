@@ -10,7 +10,7 @@ import {
 } from '../lib/rules';
 import { GuideRuleModal, CategoryRuleModal } from './RuleModals';
 import FindPanel from './FindPanel';
-import ExtensionModal from './ExtensionModal';   // ★ 추가
+import ExtensionModal from './ExtensionModal'; // ★ 추가
 
 type Row = Record<string, string>;
 
@@ -80,8 +80,8 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
       }
     } catch {
-  setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
-}
+      setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
+    }
   };
   const saveRows = (next: Row[]) => {
     localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next));
@@ -260,29 +260,29 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   }, [rows, filters, sortMap]);
 
   /** 드래그 선택 & 복사 */
-const tableHostRef = useRef<HTMLDivElement>(null);
+  const tableHostRef = useRef<HTMLDivElement>(null);
 
-// ▼ 선택 및 찾기 상태
-const [sel, setSel] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
-const [draggingSel, setDraggingSel] = useState(false);
-const [hl, setHl] = useState<{ r: number; c: number } | null>(null);   // 하이라이트 좌표
-const [showFind, setShowFind] = useState(false);                       // 찾기 패널 표시 여부
+  // ▼ 선택 및 찾기 상태
+  const [sel, setSel] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
+  const [draggingSel, setDraggingSel] = useState(false);
+  const [hl, setHl] = useState<{ r: number; c: number } | null>(null);   // 하이라이트 좌표
+  const [showFind, setShowFind] = useState(false);                       // 찾기 패널 표시 여부
 
-// ▼ 찾기 열 선택 상태 (localStorage 저장/복원)  👈️ 이 블록 "추가"
-const [checkedCols, setCheckedCols] = useState<string[]>(() => {
-  const saved = localStorage.getItem('find_checkedCols');
- return saved ? JSON.parse(saved) : ['수취인명','연락처1','연락처2','계약자주소','기기번호'];
-});
-useEffect(() => {
-  localStorage.setItem('find_checkedCols', JSON.stringify(checkedCols));
-}, [checkedCols]);
+  // ▼ 찾기 열 선택 상태 (localStorage 저장/복원)
+  const [checkedCols, setCheckedCols] = useState<string[]>(() => {
+    const saved = localStorage.getItem('find_checkedCols');
+    return saved ? JSON.parse(saved) : ['수취인명','연락처1','연락처2','계약자주소','기기번호'];
+  });
+  useEffect(() => {
+    localStorage.setItem('find_checkedCols', JSON.stringify(checkedCols));
+  }, [checkedCols]);
 
-const isSelected = (r: number, c: number) => {
-  if (!sel) return false;
-  const [r1, r2] = [Math.min(sel.r1, sel.r2), Math.max(sel.r1, sel.r2)];
-  const [c1, c2] = [Math.min(sel.c1, sel.c2), Math.max(sel.c1, sel.c2)];
-  return r >= r1 && r <= r2 && c >= c1 && c <= c2;
-};
+  const isSelected = (r: number, c: number) => {
+    if (!sel) return false;
+    const [r1, r2] = [Math.min(sel.r1, sel.r2), Math.max(sel.r1, sel.r2)];
+    const [c1, c2] = [Math.min(sel.c1, sel.c2), Math.max(sel.c1, sel.c2)];
+    return r >= r1 && r <= r2 && c >= c1 && c <= c2;
+  };
   const startSel = (r: number, c: number) => { setSel({ r1: r, c1: c, r2: r, c2: c }); setDraggingSel(true); };
   const extendSel = (r: number, c: number) => { if (draggingSel) setSel(s => (s ? { ...s, r2: r, c2: c } : s)); };
   useEffect(() => {
@@ -315,16 +315,16 @@ const isSelected = (r: number, c: number) => {
     return () => host.removeEventListener('keydown', onKey);
   }, [sel, filteredRows, colsRender]);
 
- // ▼ 찾기 기능 상태
-const jumpTo = (r: number, c: number) => {
-  setSel({ r1: r, c1: c, r2: r, c2: c });
-  const host = tableHostRef.current;
-  if (host) {
-    const rowHeight = 28;
-    const y = Math.max(0, r * rowHeight - 60);
-    host.scrollTo({ top: y, behavior: 'smooth' });
-  }
-};
+  // ▼ 찾기 기능 상태
+  const jumpTo = (r: number, c: number) => {
+    setSel({ r1: r, c1: c, r2: r, c2: c });
+    const host = tableHostRef.current;
+    if (host) {
+      const rowHeight = 28;
+      const y = Math.max(0, r * rowHeight - 60);
+      host.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
 
   /** 셀 색상 저장 */
   type Style = { bg?: string; color?: string };
@@ -425,34 +425,38 @@ const jumpTo = (r: number, c: number) => {
   const deviceIndexRef = useRef<Record<string, any> | null>(null);
   const ensureDeviceIdx = () => { if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex(); };
 
-  // ★ 연장 모달 상태/핸들러 (기존 흐름 영향 없음)
+  // ★ 연장 모달 상태/핸들러
   const [showExt, setShowExt] = useState(false);
   const [extRow, setExtRow] = useState<number|null>(null);
   const [extCol, setExtCol] = useState<string|null>(null);
   const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
+
+  // ★ ExtensionModal과 계약 맞춘 저장 핸들러
   const handleSaveExt = (payload:{ days:number; reasons:string[]; amount:number; due:string }) => {
-  const handleSaveExt = (payload:{ days:number; reasons:string[]; amount:number; due:string }) => {
-  if (extRow == null || !extCol) return;
+    if (extRow == null || !extCol) return;
 
-  const next = rows.map(r => ({ ...r }));
-  const summary = [
-    String(Math.max(0, Math.floor(payload.days))),
-    (payload.reasons?.[0] ?? '').trim(),
-    String(payload.amount),
-    (payload.due ?? '').trim(),
-  ].join('/');
+    const next = rows.map(r => ({ ...r }));
+    // 셀에는 사람이 읽기 쉬운 포맷으로 저장: "일수/사유/금액/만기일"
+    const summary = [
+      String(Math.max(0, Math.floor(payload.days))),
+      (payload.reasons?.[0] ?? '').trim(),
+      String(payload.amount),
+      (payload.due ?? '').trim(),
+    ].join('/');
 
-  next[extRow][extCol] = summary;
+    next[extRow][extCol] = summary;
 
-  const count = ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장']
-    .filter(c => (next[extRow][c] ?? '').toString().trim() !== '').length;
-  next[extRow]['총연장횟수'] = `${count}회`;
+    // 총연장횟수 갱신
+    const count = ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장']
+      .filter(c=> (next[extRow][c] ?? '').toString().trim() !== '').length;
+    next[extRow]['총연장횟수'] = `${count}회`;
 
-  if ((payload.due || '').trim()) next[extRow]['종료일'] = payload.due!.trim();
+    // 종료일 자동 업데이트 (만기일 입력 시)
+    if ((payload.due||'').trim()) next[extRow]['종료일'] = payload.due.trim();
 
-  saveRows(next);
-  setShowExt(false); setExtRow(null); setExtCol(null);
-};
+    saveRows(next);
+    setShowExt(false); setExtRow(null); setExtCol(null);
+  };
 
   return (
     <div className="bg-white border rounded shadow-sm">
@@ -505,49 +509,48 @@ const jumpTo = (r: number, c: number) => {
           </div>
         )}
 
-      <div className="ml-3 flex items-center gap-2">
-  <button
-    className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
-    onClick={() => {
-      setFilterMode(v => {
-        const next = !v;
-        if (!next) { setFilters({}); setSortMap({}); setOpenFilterCol(null); }
-        return next;
-      });
-    }}
-  >필터</button>
+        <div className="ml-3 flex items-center gap-2">
+          <button
+            className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
+            onClick={() => {
+              setFilterMode(v => {
+                const next = !v;
+                if (!next) { setFilters({}); setSortMap({}); setOpenFilterCol(null); }
+                return next;
+              });
+            }}
+          >필터</button>
 
-  <button
-    className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-    onClick={() => {
-      const header = colsRender.join(',');
-      const body = data.map(r =>
-        colsRender.map(c => {
-          const v = (r[c] ?? '').toString().replace(/"/g, '""');
-          return /[",\n]/.test(v) ? `"${v}"` : v;
-        }).join(',')
-      ).join('\n');
-      const csv = header + '\n' + body;
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `${viewId}_export.csv`;
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a); URL.revokeObjectURL(url);
-    }}
-  >다운로드(엑셀)</button>
+          <button
+            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+            onClick={() => {
+              const header = colsRender.join(',');
+              const body = data.map(r =>
+                colsRender.map(c => {
+                  const v = (r[c] ?? '').toString().replace(/"/g, '""');
+                  return /[",\n]/.test(v) ? `"${v}"` : v;
+                }).join(',')
+              ).join('\n');
+              const csv = header + '\n' + body;
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = `${viewId}_export.csv`;
+              document.body.appendChild(a); a.click();
+              document.body.removeChild(a); URL.revokeObjectURL(url);
+            }}
+          >다운로드(엑셀)</button>
 
-  <ColorMenu onApply={applyColor} />
+          <ColorMenu onApply={applyColor} />
 
-  {/* ▼ 찾기 버튼 + 패널 */}
-  <div className="relative">
-    <button
-       className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-       onClick={() => setShowFind(true)}
-   >찾기</button>
-
-     </div>
-</div>
+          {/* ▼ 찾기 버튼 + 패널 */}
+          <div className="relative">
+            <button
+              className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+              onClick={() => setShowFind(true)}
+            >찾기</button>
+          </div>
+        </div>
         
         <div className="ml-auto flex items-center gap-2">
           <button
@@ -571,11 +574,11 @@ const jumpTo = (r: number, c: number) => {
       {/* 표 */}
       <div className="p-2">
         <div
-            ref={tableHostRef}
-            tabIndex={0}
-            /* ▼ 높이 조정: -220px → -200px 으로 줄여서 한 줄~한 줄 반 더 보이게 */
-           className="w-full max-h-[calc(100vh-200px)] overflow-auto border rounded outline-none"
-         >
+          ref={tableHostRef}
+          tabIndex={0}
+          /* ▼ 높이 조정: -220px → -40px 으로 줄여서 한 줄~한 줄 반 더 보이게 */
+          className="w-full max-h-[calc(100vh-40px)] overflow-auto border rounded outline-none"
+        >
           <table className="min-w-[3200px] w-max text-sm border-collapse">
             <colgroup>
               <col style={{ width: CHECKBOX_W }} />
@@ -590,7 +593,7 @@ const jumpTo = (r: number, c: number) => {
                   const activeFilter = (filters[c]?.size ?? 0) > 0 || !!sortMap[c];
                   const allowFilter = true;
                   return (
-                      <th key={c} className="border px-2 py-[0.16rem] text-[0.74rem] text-gray-700 relative select-none">
+                    <th key={c} className="border px-2 py-[0.16rem] text-[0.74rem] text-gray-900 relative select-none">
                       <div className={`flex items-center gap-2 ${c==='계약자주소'?'justify-center':'justify-start'}`}>
                         <span className="whitespace-nowrap">{label(c)}</span>
 
@@ -661,23 +664,22 @@ const jumpTo = (r: number, c: number) => {
                     const val = row[c] ?? '';
                     return (
                       <td
-                         key={ci}
-                         className={`border px-[0.4rem] py-[0.128rem]
+                        key={ci}
+                        className={`border px-[0.4rem] py-[0.128rem]
                            ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}
                            ${hl && (hl.r===rIdx || hl.c===ci) ? 'bg-sky-50' : ''}`}
-                         onMouseDown={() => startSel(rIdx, ci)}
-                         onMouseEnter={() => extendSel(rIdx, ci)}
-                         onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                         style={{ background: style.bg, color: style.color }}
-                         onDoubleClick={()=>{
-                           if (['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c)) {
-                             openExt(rIdx, c);
-                           }
-                         }}
+                        onMouseDown={() => startSel(rIdx, ci)}
+                        onMouseEnter={() => extendSel(rIdx, ci)}
+                        onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                        style={{ background: style.bg, color: style.color }}
+                        onDoubleClick={()=>{
+                          if (['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c)) {
+                            openExt(rIdx, c);
+                          }
+                        }}
                       >
-
                         <input
-                         className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0"
+                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0"
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;
@@ -741,7 +743,7 @@ const jumpTo = (r: number, c: number) => {
         </div>
       )}
 
-            {/* 규칙 모달 (통합관리에서만 표시) */}
+      {/* 규칙 모달 (통합관리에서만 표시) */}
       {isUnified && <GuideRuleModal open={showGuide} onClose={()=>setShowGuide(false)} />}
       {isUnified && <CategoryRuleModal open={showCategory} onClose={()=>setShowCategory(false)} />}
 
@@ -759,30 +761,26 @@ const jumpTo = (r: number, c: number) => {
         />
       )}
 
-      {/* ★ 연장 입력 모달 */}
-<ExtensionModal
-  open={showExt}
-  initial={
-    extRow != null && extCol
-      ? (() => {
-          const str = (rows[extRow][extCol] ?? '').toString();
-          const [daysStr = '', reason = '', amountStr = '', endDate = ''] = str.split('/');
-
-          const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
-          const amount = (() => {
-            const n = Number((amountStr || '').replace(/[^\d.-]/g, ''));
-            return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
-          })();
-          const due = /^\d{4}-\d{2}-\d{2}$/.test(endDate.trim()) ? endDate.trim() : '';
-
-          return { days, reasons: reason ? [reason] : [''], amount, due };
-        })()
-      : undefined
-  }
-  onSave={handleSaveExt}
-  onClose={() => setShowExt(false)}
-/>
-
+      {/* ★ 연장 입력 모달 (최소 수정: 계약 일치) */}
+      <ExtensionModal
+        open={showExt}
+        initial={
+          extRow!=null && extCol ? (()=>{ 
+            const str = (rows[extRow][extCol] ?? '').toString();
+            // 기존 저장 포맷: "일수/사유/금액/만기일"
+            const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
+            const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
+            const amount = (() => {
+              const n = Number((amountStr || '').replace(/[^\d.-]/g, ''));
+              return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+            })();
+            const due = /^\d{4}-\d{2}-\d{2}$/.test(endDate.trim()) ? endDate.trim() : '';
+            return { days, reasons: reason ? [reason] : [''], amount, due };
+          })(): undefined
+        }
+        onSave={handleSaveExt}
+        onClose={()=>setShowExt(false)}
+      />
     </div>
   );
 }
