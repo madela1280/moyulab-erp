@@ -29,7 +29,7 @@ export default function FindPanel({
   );
 
   // 워커 생성/해제
-  useEffect(() => {
+    useEffect(() => {
     const w = new Worker(new URL('../workers/findWorker.ts', import.meta.url));
     workerRef.current = w;
     w.onmessage = (e: MessageEvent<FindRes>) => {
