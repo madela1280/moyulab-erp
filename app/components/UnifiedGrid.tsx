@@ -679,64 +679,74 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
             }}
           >필터</button>
 
-          {/* ▼ 검색 버튼 복구 */}
-          <button
-            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-            onClick={() => setShowFind(true)}
-            title="데이터 찾기"
-          >검색</button>
+       {/* ▼ 검색 버튼 복구 */}
+<button
+  className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+  onClick={() => setShowFind(true)}
+  title="데이터 찾기"
+>
+  검색
+</button>
 
-          <button
-            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-            onClick={() => {
-              const header = colsRender.join(',');
-              const body = data.map(r =>
-                colsRender.map(c => {
-                  const v = (r[c] ?? '').toString().replace(/"/g, '""');
-                  return /[",\n]/.test(v) ? `"${v}"` : v;
-                }).join(',')
-              ).join('\n');
-              const csv = header + '\n' + body;
-              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url; a.download = `${viewId}_export.csv`;
-              document.body.appendChild(a); a.click();
-              document.body.removeChild(a); URL.revokeObjectURL(url);
-            }}
-          >다운로드(엑셀)</button>
+{/* ▼ 다운로드 버튼 (필터 적용 + 엑셀 한글 깨짐 방지) */}
+<button
+  className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+  onClick={() => {
+    const BOM = '\uFEFF';
+    const src = (filteredRows && filteredRows.length ? filteredRows : rows).filter(r => !isEmptyRow(r));
+    const header = colsRender.join(',');
+    const body = src.map(r =>
+      colsRender.map(c => {
+        const v = (r[c] ?? '').toString();
+        const s = v.replace(/"/g, '""');
+        return /[",\n]/.test(s) ? `"${s}"` : s;
+      }).join(',')
+    ).join('\n');
 
-          <ColorMenu onApply={applyColor} />
-          <ErrorCheckMenu rows={rows} />
-        </div>
+    const csv = BOM + header + '\n' + body;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${viewId}_export.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }}
+>
+  다운로드(엑셀)
+</button>
 
-        {/* 우측: 열 이동/폭 조정 */}
-        <div className="ml-auto flex items-center gap-2">
-          {isUnified && (
-            <>
-              <button
-                className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-                title="열 이동 모드 (제목 클릭 시 폭(px) 입력 가능)"
-                onClick={() => setReorderMode(v => !v)}
-              >
-                열 이동 모드
-              </button>
-              <button
-                className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-                onClick={() => {
-                  const next = rows.concat(
-                    Array.from({ length: 10 }, () => Object.fromEntries(colsRender.map(c => [c, ''])))
-                  );
-                  saveRows(next);
-                }}
-              >행 10 추가</button>
-              <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
-              <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
-            </>
-          )}
-        </div>
-      </div>
-
+{/* 우측: 열 이동/폭 조정 */}
+<div className="ml-auto flex items-center gap-2">
+  {isUnified && (
+    <>
+      <button
+        className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+        title="열 이동 모드 (제목 클릭 시 폭(px) 입력 가능)"
+        onClick={() => setReorderMode(v => !v)}
+      >
+        열 이동 모드
+      </button>
+      <button
+        className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+        onClick={() => {
+          const next = rows.concat(
+            Array.from({ length: 10 }, () => Object.fromEntries(colsRender.map(c => [c, ''])))
+          );
+          saveRows(next);
+        }}
+      >
+        행 10 추가
+      </button>
+      <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
+      <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
+    </>
+  )}
+</div>
+</div>
+         
       {/* 표 */}
       <div className="p-2">
         <div
