@@ -11,6 +11,7 @@ import {
 import { GuideRuleModal, CategoryRuleModal } from './RuleModals';
 import FindPanel from './FindPanel';
 import ExtensionModal from './ExtensionModal';
+import ErrorCheckMenu from './ErrorCheckMenu';
 
 type Row = Record<string, string>;
 
@@ -706,6 +707,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
           >다운로드(엑셀)</button>
 
           <ColorMenu onApply={applyColor} />
+          <ErrorCheckMenu rows={rows} />
         </div>
 
         {/* 우측: 열 이동/폭 조정 */}
