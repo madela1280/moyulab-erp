@@ -102,7 +102,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     const mm = (e: MouseEvent) => {
       if (!dragInfo.current) return;
       const { col, startX, startW } = dragInfo.current;
-      const w = Math.max(60, startW + (e.clientX - startX));
+      const w = Math.max(20, startW + (e.clientX - startX));
       setColW(prev => ({ ...prev, [col]: w }));
     };
     const mu = () => {
@@ -473,10 +473,20 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
     if ((dataExt.due||'').trim()) next[extRow]['종료일'] = dataExt.due.trim();
 
-    saveRows(next);
-    setShowExt(false); setExtRow(null); setExtCol(null);
-    setHighlightRow(null); // 저장 후 강조 해제
-  };
+   // 0차연장 자동계산: 종료일 - 시작일
+if (next[extRow]['종료일'] && next[extRow]['시작일']) {
+  const start = new Date(next[extRow]['시작일']);
+  const end = new Date(next[extRow]['종료일']);
+  if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+    const diff = Math.floor((end.getTime() - start.getTime()) / (1000*60*60*24));
+    next[extRow]['0차연장'] = `${diff}일`;
+  }
+}
+
+saveRows(next);
+setShowExt(false); setExtRow(null); setExtCol(null);
+setHighlightRow(null); // 저장 후 강조 해제
+};
 
   return (
     <div className="bg-white border rounded shadow-sm">
