@@ -163,6 +163,8 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
             if (Number.isFinite(diff)) next[r]['0차연장'] = `${diff}일`;
           }
         }
+        // 붙여넣기 후 총연장횟수(1~5차만)
+        next[r]['총연장횟수'] = `${countExt(next[r])}회`;
       }
 
       return next;
@@ -435,18 +437,23 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const deviceIndexRef = useRef<Record<string, any> | null>(null);
   const ensureDeviceIdx = () => { if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex(); };
 
-  // ★ 연장 모달 상태/핸들러 (클릭으로 열림)
+  // ====== 연장 관련 ======
   const [showExt, setShowExt] = useState(false);
   const [extRow, setExtRow] = useState<number|null>(null);
   const [extCol, setExtCol] = useState<string|null>(null);
   const [highlightRow, setHighlightRow] = useState<number|null>(null);
 
-  // 모달 열기 대상: 1~5차만 (0차 제외)
-  const isExtCol = (c:string) => /^[1-5]차연장$/.test(c) || ['1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
+  // 모달 대상: 1~5차만 (0차 제외)
+  const isExtCol = (c:string) =>
+    /^[1-5]차연장$/.test(c) || ['1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
+
+  // 총연장횟수: 1~5차만 카운트
+  const countExt = (r: Row) =>
+    ['1차연장','2차연장','3차연장','4차연장','5차연장']
+      .reduce((n, c) => n + (((r[c] ?? '').toString().trim()) ? 1 : 0), 0);
 
   const isEmptyRow = (row: Row) => colsRender.every(k => ((row?.[k] ?? '') === ''));
 
-  // 화면 rIdx → 원본 rows 인덱스로 변환
   const openExt = (rIdx:number, col:string) => {
     if (col === '0차연장') return; // 0차는 모달 금지
     if (!isExtCol(col)) return;
@@ -469,7 +476,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     setHighlightRow(baseIdx);
   };
 
-  // 연장 저장: 만기일→종료일 반영, 총연장횟수는 1~5차만 카운트
   const handleSaveExt = (dataExt:{days:number; reasons:string[]; amount:number; due:string}) => {
     if (extRow==null || !extCol) return;
 
@@ -483,11 +489,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
     next[extRow][extCol] = summary;
 
-    const count = colsRender
-      .filter(c => /^[1-5]차연장$/.test(c))
-      .filter(c => (next[extRow][c] ?? '').toString().trim() !== '').length;
-    next[extRow]['총연장횟수'] = `${count}회`;
+    // 총연장횟수 = 1~5차만
+    next[extRow]['총연장횟수'] = `${countExt(next[extRow])}회`;
 
+    // 만기일은 종료일에 반영(0차연장과는 무관)
     if ((dataExt.due || '').trim()) {
       next[extRow]['종료일'] = dataExt.due.trim();
     }
@@ -497,8 +502,8 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     setHighlightRow(null);
   };
 
-  // 업로드/전송·직접입력 등 모든 경로에서
-  // 시작일/종료일이 유효해지는 순간 0차연장을 "비어있을 때만" 1회 자동 채움
+  // 시작일/종료일이 유효해지는 순간 0차연장을 "비어있을 때만" 1회 자동 채우고
+  // 총연장횟수(1~5차)도 일괄 보정
   useEffect(() => {
     if (!rows.length) return;
     const ymd = /^\d{4}-\d{2}-\d{2}$/;
@@ -517,6 +522,9 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
           }
         }
       }
+      const beforeCount = (cur['총연장횟수'] ?? '').toString();
+      const cnt = `${countExt(cur)}회`;
+      if (beforeCount !== cnt) { cur['총연장횟수'] = cnt; changed = true; }
       return cur;
     });
     if (changed) saveRows(next);
@@ -763,6 +771,11 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                                 }
                               }
 
+                              // 1~5차 연장 칸 편집 시 총연장횟수 즉시 반영
+                              if (/^[1-5]차연장$/.test(c)) {
+                                next[rIdx]['총연장횟수'] = `${countExt(next[rIdx])}회`;
+                              }
+
                               if (c === '거래처분류' || c === '기기번호') {
                                 if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex();
                                 applyAutoToRowInPlace(next[rIdx], deviceIndexRef.current || undefined);
@@ -840,7 +853,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
       {/* ★ 연장 입력 모달 (0차 제외하고 1~5차에서만 open) */}
       <ExtensionModal
         key={showExt && extRow!=null && extCol ? `${extRow}-${extCol}` : 'closed'}
-        open={!!showExt && extRow!=null && !!extCol && !!rows[extRow]}
+        open={!!showExt && extRow!=null && !!extCol && isExtCol(extCol) && !!rows[extRow]}
         initial={
           (extRow!=null && extCol && rows[extRow]) ? (()=>{ 
             const str = ((rows[extRow] ?? {})[extCol] ?? '').toString();
@@ -978,6 +991,9 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
+function keyOf(r:number,c:number){ return `${r}:${c}`; }
+
 
 
 
