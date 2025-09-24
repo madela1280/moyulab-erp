@@ -421,11 +421,19 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const ensureDeviceIdx = () => { if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex(); };
 
   // ★ 연장 모달 상태/핸들러 (클릭으로 열림)
-  const [showExt, setShowExt] = useState(false);
-  const [extRow, setExtRow] = useState<number|null>(null);
-  const [extCol, setExtCol] = useState<string|null>(null);
-  const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
-  const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
+const [showExt, setShowExt] = useState(false);
+const [extRow, setExtRow] = useState<number|null>(null);
+const [extCol, setExtCol] = useState<string|null>(null);
+const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
+
+// 화면 rIdx → 원본 rows 인덱스로 변환 (필터/정렬/빈행보충 대비)
+const openExt = (rIdx:number, col:string) => {
+  const baseIdx = rows.indexOf(data[rIdx]); // data는 filteredRows 기반, 참조 동일일 때만 매칭됨
+  if (baseIdx < 0) return;                  // 보충된 빈행 등은 무시
+  setExtRow(baseIdx);
+  setExtCol(col);
+  setShowExt(true);
+};
 
   const handleSaveExt = (data:{days:number; reasons:string[]; amount:number; due:string}) => {
     if (extRow==null || !extCol) return;
