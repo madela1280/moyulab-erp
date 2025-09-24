@@ -24,9 +24,9 @@ const FALLBACK_COLUMNS: string[] = [
 const LS_UNIFIED_COLUMNS = 'unified_columns';
 const LS_UNIFIED_ROWS    = 'unified_rows';
 
-const CAT_PREFIX         = 'cat_rows:';          // cat_rows:온라인 / cat_rows:보건소 / cat_rows:조리원
-const COLW_PREFIX        = 'col_widths:';        // col_widths:통합관리 / ...
-const CELLSTYLE_PREFIX   = 'cell_styles:';       // 색상 저장
+const CAT_PREFIX         = 'cat_rows:';        // cat_rows:온라인 / cat_rows:보건소 / cat_rows:조리원
+const COLW_PREFIX        = 'col_widths:';      // col_widths:통합관리 / ...
+const CELLSTYLE_PREFIX   = 'cell_styles:';     // 색상 저장
 
 const LABELS: Record<string, string> = { 계약자주소: '주소', 특이사항1: '특이사항' };
 const label = (k: string) => LABELS[k] ?? k;
@@ -102,7 +102,8 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     const mm = (e: MouseEvent) => {
       if (!dragInfo.current) return;
       const { col, startX, startW } = dragInfo.current;
-      const w = Math.max(20, startW + (e.clientX - startX));
+      // [CHANGE 1] 열 드래그 최소폭 24px 로 더 작게 가능
+      const w = Math.max(24, startW + (e.clientX - startX));
       setColW(prev => ({ ...prev, [col]: w }));
     };
     const mu = () => {
@@ -149,6 +150,21 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
           if (ci < colsRender.length && ri + rdx < next.length) next[ri + rdx][colsRender[ci]] = v;
         });
       });
+
+      // [CHANGE 2] 붙여넣기 후 0차연장은 '비어 있을 때만' 최초 1회 자동계산
+      const ymd = /^\d{4}-\d{2}-\d{2}$/;
+      for (let r = ri; r < Math.min(ri + lines.length, next.length); r++) {
+        const already = (next[r]['0차연장'] ?? '').toString().trim();
+        if (!already) {
+          const s = (next[r]['시작일'] ?? '').toString().trim();
+          const e2 = (next[r]['종료일'] ?? '').toString().trim();
+          if (ymd.test(s) && ymd.test(e2)) {
+            const diff = Math.floor((new Date(e2).getTime() - new Date(s).getTime()) / 86400000);
+            if (Number.isFinite(diff)) next[r]['0차연장'] = `${diff}일`;
+          }
+        }
+      }
+
       return next;
     });
   };
@@ -424,7 +440,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const [showExt, setShowExt] = useState(false);
   const [extRow, setExtRow] = useState<number|null>(null);
   const [extCol, setExtCol] = useState<string|null>(null);
-  // ▼ 추가: 모달 입력 중 행 강조
+  // 입력 중 강조
   const [highlightRow, setHighlightRow] = useState<number|null>(null);
 
   const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
@@ -441,7 +457,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     // 1) 참조 동일 매핑
     let baseIdx = rows.indexOf(viewRow);
 
-    // 2) 값으로 보조 매핑 (모든 표시 열이 동일한 첫 번째 행)
+    // 2) 값으로 보조 매핑
     if (baseIdx < 0) {
       baseIdx = rows.findIndex(r =>
         r === viewRow || colsRender.every(k => (r?.[k] ?? '') === (viewRow?.[k] ?? ''))
@@ -455,6 +471,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     setHighlightRow(baseIdx); // 선택 행 빨간 강조
   };
 
+  // [CHANGE 3] 연장 저장 시: 종료일 자동반영 유지, 0차연장은 절대 건드리지 않음
   const handleSaveExt = (dataExt:{days:number; reasons:string[]; amount:number; due:string}) => {
     if (extRow==null || !extCol) return;
 
@@ -468,25 +485,20 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
     next[extRow][extCol] = summary;
 
-    const count = colsRender.filter(c => isExtCol(c)).filter(c => (next[extRow][c] ?? '').toString().trim() !== '').length;
+    const count = colsRender
+      .filter(c => isExtCol(c))
+      .filter(c => (next[extRow][c] ?? '').toString().trim() !== '').length;
     next[extRow]['총연장횟수'] = `${count}회`;
 
-    if ((dataExt.due||'').trim()) next[extRow]['종료일'] = dataExt.due.trim();
+    // ✅ 만기일은 종료일에 반영(기존 UX 유지). 0차연장은 여기서 절대 수정하지 않음.
+    if ((dataExt.due || '').trim()) {
+      next[extRow]['종료일'] = dataExt.due.trim();
+    }
 
-   // 0차연장 자동계산: 종료일 - 시작일
-if (next[extRow]['종료일'] && next[extRow]['시작일']) {
-  const start = new Date(next[extRow]['시작일']);
-  const end = new Date(next[extRow]['종료일']);
-  if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-    const diff = Math.floor((end.getTime() - start.getTime()) / (1000*60*60*24));
-    next[extRow]['0차연장'] = `${diff}일`;
-  }
-}
-
-saveRows(next);
-setShowExt(false); setExtRow(null); setExtCol(null);
-setHighlightRow(null); // 저장 후 강조 해제
-};
+    saveRows(next);
+    setShowExt(false); setExtRow(null); setExtCol(null);
+    setHighlightRow(null); // 저장 후 강조 해제
+  };
 
   return (
     <div className="bg-white border rounded shadow-sm">
@@ -711,13 +723,24 @@ setHighlightRow(null); // 저장 후 강조 해제
                         onClick={handleCellClick}  // ★ 클릭으로 모달 열기
                       >
                         <input
-                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0"
+                          className="w-full min-w-0 px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0" // [CHANGE 4] min-w-0로 더 좁게
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;
                             setRows(prev => {
                               const next = prev.map(r => ({ ...r }));
                               next[rIdx][c] = v;
+
+                              // [CHANGE 5] 0차연장: 시작/종료일이 유효해지는 '최초 1회만' 자동 설정
+                              if ((c === '시작일' || c === '종료일') && !((next[rIdx]['0차연장'] ?? '').toString().trim())) {
+                                const s = (next[rIdx]['시작일'] ?? '').toString().trim();
+                                const e2 = (next[rIdx]['종료일'] ?? '').toString().trim();
+                                const ymd = /^\d{4}-\d{2}-\d{2}$/;
+                                if (ymd.test(s) && ymd.test(e2)) {
+                                  const diff = Math.floor((new Date(e2).getTime() - new Date(s).getTime()) / 86400000);
+                                  if (Number.isFinite(diff)) next[rIdx]['0차연장'] = `${diff}일`;
+                                }
+                              }
 
                               if (c === '거래처분류' || c === '기기번호') {
                                 if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex();
@@ -934,6 +957,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
