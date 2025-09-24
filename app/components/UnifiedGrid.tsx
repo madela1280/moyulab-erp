@@ -426,10 +426,12 @@ const [extRow, setExtRow] = useState<number|null>(null);
 const [extCol, setExtCol] = useState<string|null>(null);
 const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
 
-// 화면 rIdx → 원본 rows 인덱스로 변환 (필터/정렬/빈행보충 대비)
+// data는 필터링/정렬된 배열 → 원본 rows 인덱스를 보관해야 함
 const openExt = (rIdx:number, col:string) => {
-  const baseIdx = rows.indexOf(data[rIdx]); // data는 filteredRows 기반, 참조 동일일 때만 매칭됨
-  if (baseIdx < 0) return;                  // 보충된 빈행 등은 무시
+  const row = data[rIdx];
+  if (!row) return;
+  const baseIdx = rows.findIndex(r => r === row);  // 객체 동일성 비교
+  if (baseIdx === -1) return;                      // 보충된 빈행은 무시
   setExtRow(baseIdx);
   setExtCol(col);
   setShowExt(true);
@@ -821,7 +823,7 @@ function ExcelFilterPopover({
   };
 
   return (
-    <div className="absolute z-40 mt-1 w:[260px] bg-white border rounded shadow">
+    <div className="absolute z-40 mt-1 w-[260px] bg-white border rounded shadow">
       <div className="p-2 border-b text-sm font-semibold">{title}</div>
 
       <div className="p-2 flex gap-2">
