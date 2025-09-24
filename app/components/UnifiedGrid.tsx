@@ -117,7 +117,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     window.dispatchEvent(new Event('unified_rows_updated'));
   };
 
-  /** 삭제/체크 */
+  /** 삭제/체크 (체크된 행 제거) */
   const [checked, setChecked] = useState<Record<number, boolean>>({});
   const deleteSelected = () => {
     const next = rows.filter((_, i) => !checked[i]);
@@ -308,7 +308,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     return base;
   }, [rows, filters, sortMap]);
 
-  /** 드래그 선택 & 복사 */
+  /** 드래그 선택 & 복사/삭제 */
   const tableHostRef = useRef<HTMLDivElement>(null);
 
   const [sel, setSel] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
@@ -337,6 +337,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     window.addEventListener('mouseup', up);
     return () => window.removeEventListener('mouseup', up);
   }, []);
+
   const copySelection = async () => {
     if (!sel) return;
     const [r1, r2] = [Math.min(sel.r1, sel.r2), Math.max(sel.r1, sel.r2)];
@@ -350,17 +351,66 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
       document.execCommand('copy'); document.body.removeChild(ta);
     }
   };
+
+  // ▼ 선택된 뷰 인덱스를 실제 rows 인덱스로 변환
+  const viewToBaseRowIndex = (viewRow: Row): number => {
+    let baseIdx = rows.indexOf(viewRow);
+    if (baseIdx >= 0) return baseIdx;
+    baseIdx = rows.findIndex(r => r === viewRow || colsRender.every(k => (r?.[k] ?? '') === (viewRow?.[k] ?? '')));
+    return baseIdx;
+  };
+
+  // ▼ 선택 영역의 실제 (행,열키) 목록 계산
+  const selectedCellsInBase = (): Array<{rowIndex:number; colKey:string}> => {
+    if (!sel) return [];
+    const [r1, r2] = [Math.min(sel.r1, sel.r2), Math.max(sel.r1, sel.r2)];
+    const [c1, c2] = [Math.min(sel.c1, sel.c2), Math.max(sel.c1, sel.c2)];
+    const out: Array<{rowIndex:number; colKey:string}> = [];
+    for (let vr = r1; vr <= r2; vr++) {
+      if (vr >= filteredRows.length) break; // 보충된 빈행 제외
+      const viewRow = filteredRows[vr];
+      const baseIdx = viewToBaseRowIndex(viewRow);
+      if (baseIdx < 0) continue;
+      for (let vc = c1; vc <= c2; vc++) {
+        const key = colsRender[vc];
+        if (!key) continue;
+        out.push({ rowIndex: baseIdx, colKey: key });
+      }
+    }
+    return out;
+  };
+
+  // ▼ 선택 영역 삭제(공백)
+  const clearSelectionCells = () => {
+    const cells = selectedCellsInBase();
+    if (!cells.length) return;
+    const next = rows.map(r => ({ ...r }));
+    for (const { rowIndex, colKey } of cells) {
+      if (next[rowIndex]) next[rowIndex][colKey] = '';
+    }
+    saveRows(next);
+  };
+
   useEffect(() => {
     const host = tableHostRef.current;
     if (!host) return;
     const onKey = (e: KeyboardEvent) => {
+      // 복사
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
         e.preventDefault(); copySelection();
+      }
+      // 잘라내기 (복사 후 삭제)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+        e.preventDefault(); copySelection(); clearSelectionCells();
+      }
+      // 선택 영역 삭제
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault(); clearSelectionCells();
       }
     };
     host.addEventListener('keydown', onKey);
     return () => host.removeEventListener('keydown', onKey);
-  }, [sel, filteredRows, colsRender]);
+  }, [sel, filteredRows, colsRender, rows]);
 
   const jumpTo = (r: number, c: number) => {
     setSel({ r1: r, c1: c, r2: r, c2: c });
@@ -767,9 +817,16 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                     return (
                       <td
                         key={ci}
-                        className="border px-[0.4rem] py-[0.128rem] whitespace-nowrap overflow-hidden text-ellipsis"
+                        className={`border px-[0.4rem] py-[0.128rem] whitespace-nowrap overflow-hidden text-ellipsis
+                          ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}`}
                         onClick={handleCellClick}
+                        onMouseDown={() => startSel(rIdx, ci)}
+                        onMouseEnter={() => extendSel(rIdx, ci)}
                         title={typeof val === 'string' ? val : ''}
+                        style={{
+                          background: (cellStyles[`${rIdx}:${ci}`]?.bg) ?? undefined,
+                          color: (cellStyles[`${rIdx}:${ci}`]?.color) ?? undefined
+                        }}
                       >
                         <input
                           className="w-full min-w-0 px-[0.2rem] py-[0.096rem] text-[0.62rem] bg-transparent border-0 outline-none focus:ring-0 truncate text-gray-900"
@@ -872,7 +929,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         key={showExt && extRow!=null && extCol ? `${extRow}-${extCol}` : 'closed'}
         open={!!showExt && extRow!=null && !!extCol && isExtCol(extCol) && !!rows[extRow]}
         initial={
-          (extRow!=null && extCol && rows[extRow]) ? (()=>{ 
+          (extRow!=null && extCol && rows[extRow]) ? (()=>{
             const str = ((rows[extRow] ?? {})[extCol] ?? '').toString();
             const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
             const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
@@ -1003,6 +1060,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
