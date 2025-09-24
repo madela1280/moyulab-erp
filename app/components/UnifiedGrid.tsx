@@ -852,26 +852,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                         onMouseDown={() => startSel(rIdx, ci)}
                         onMouseEnter={() => extendSel(rIdx, ci)}
                         title={typeof val === 'string' ? val : ''}
-                        style={{
-                          background: (cellStyles[`${rIdx}:${ci}`]?.bg) ?? undefined,
-                          color: (cellStyles[`${rIdx}:${ci}`]?.color) ?? undefined
-                        }}
-                      >
                         <input
-                          className="w-full min-w-0 px-[0.2rem] py-[0.096rem] text-[0.62rem] bg-transparent border-0 outline-none focus:ring-0 truncate text-gray-900"
-                          value={val}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setRows(prev => {
-                              const next = prev.map(r => ({ ...r }));
-                              next[rIdx][c] = v;
-
-                              // 0차연장 자동 설정
-                              if ((c === '시작일' || c === '종료일') && !((next[rIdx]['0차연장'] ?? '').toString().trim())) {
-                                const s = (next[rIdx]['시작일'] ?? '').toString().trim();
-                                const e2 = (next[rIdx]['종료일'] ?? '').toString().trim();
-                                const ymd = /^\d{4}-\d{2}-\d{2}$/;
-                                if (ymd.test(s) && ymd.test(e2)) {
+  className="w-full min-w-0 px-[0.2rem] py-[0.096rem] text-[0.62rem] bg-transparent border-0 outline-none focus:ring-0 truncate text-gray-900"
+  style={{ color: (cellStyles[`${rIdx}:${ci}`]?.color) ?? undefined }}
+  value={val}
                                   const diff = Math.floor((new Date(e2).getTime() - new Date(s).getTime()) / 86400000);
                                   if (Number.isFinite(diff)) next[rIdx]['0차연장'] = `${diff}일`;
                                 }
