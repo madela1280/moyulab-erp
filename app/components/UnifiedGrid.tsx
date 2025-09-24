@@ -746,6 +746,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   )}
 </div>
 </div>
+</div>  {/* ← 이 닫힘 1줄 추가: 헤더 바(<div className="px-4 py-3 ...">) 닫기 */}
          
       {/* 표 */}
       <div className="p-2">
