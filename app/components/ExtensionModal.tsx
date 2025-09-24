@@ -124,7 +124,7 @@ export default function ExtensionModal({
     }
   }, [initDue]);
 
-  // ✅ 훅 호출 이후에 조건부 리턴
+  // ✅ 훅 호출 이후에 조건부 리턴 (Hook 순서 보장)
   if (!open) return null;
 
   /** 선택 처리 */
@@ -340,6 +340,7 @@ export default function ExtensionModal({
     </div>
   );
 }
+
 
 
 
