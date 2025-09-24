@@ -779,27 +779,28 @@ const openExt = (rIdx:number, col:string) => {
       )}
 
       {/* ★ 연장 입력 모달 (원래 흐름 그대로 유지) */}
-      <ExtensionModal
-        open={showExt}
-        initial={
-          extRow!=null && extCol ? (()=>{ 
-            const str = (rows[extRow][extCol] ?? '').toString();
-            // 저장 포맷: "일수/사유/금액/만기일"
-            const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
+     <ExtensionModal
+  open={showExt}
+  initial={
+    (extRow!=null && extCol && rows[extRow]) ? (()=>{ 
+      // ✅ rows[extRow]가 없을 때 안전하게 처리
+      const str = ((rows[extRow] ?? {})[extCol] ?? '').toString();
+      // 저장 포맷: "일수/사유/금액/만기일"
+      const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
 
-            const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
+      const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
 
-            const amountNum = Number((amountStr || '').replace(/[^\d.-]/g, ''));
-            const amount = Number.isFinite(amountNum) ? Math.max(0, Math.floor(amountNum)) : 0;
+      const amountNum = Number((amountStr || '').replace(/[^\d.-]/g, ''));
+      const amount = Number.isFinite(amountNum) ? Math.max(0, Math.floor(amountNum)) : 0;
 
-            const due = /^\d{4}-\d{2}-\d{2}$/.test((endDate || '').trim()) ? (endDate || '').trim() : '';
+      const due = /^\d{4}-\d{2}-\d{2}$/.test((endDate || '').trim()) ? (endDate || '').trim() : '';
 
-            return { days, reasons: reason ? [reason] : [''], amount, due };
-          })(): undefined
-        }
-        onSave={handleSaveExt}
-        onClose={()=>setShowExt(false)}
-      />
+      return { days, reasons: reason ? [reason] : [''], amount, due };
+    })(): undefined
+  }
+  onSave={handleSaveExt}
+  onClose={()=>setShowExt(false)}
+/>
     </div>
   );
 }
