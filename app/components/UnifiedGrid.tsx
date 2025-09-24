@@ -426,17 +426,25 @@ const [extRow, setExtRow] = useState<number|null>(null);
 const [extCol, setExtCol] = useState<string|null>(null);
 const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
 
+const isEmptyRow = (row: Row) => colsRender.every(k => ((row?.[k] ?? '') === ''));
+
+// 화면 rIdx → 원본 rows 인덱스로 변환 (필터/정렬/빈행보충 대비, 참조/값 모두 시도)
 const openExt = (rIdx:number, col:string) => {
   const viewRow = data[rIdx];
   if (!viewRow) return;
+  if (rIdx >= filteredRows.length) return;     // 보충된 빈행 클릭 방지
+  if (isEmptyRow(viewRow)) return;             // 빈 행 방지
 
+  // 1) 참조 동일 매핑
   let baseIdx = rows.indexOf(viewRow);
+
+  // 2) 값으로 보조 매핑 (모든 표시 열이 동일한 첫 번째 행)
   if (baseIdx < 0) {
     baseIdx = rows.findIndex(r =>
       r === viewRow || colsRender.every(k => (r?.[k] ?? '') === (viewRow?.[k] ?? ''))
     );
   }
-  if (baseIdx < 0) return; // 빈 보충행 등 무시
+  if (baseIdx < 0) return;
 
   setExtRow(baseIdx);
   setExtCol(col);
