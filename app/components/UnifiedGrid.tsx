@@ -816,7 +816,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
             <tbody className="text-gray-900">
               {data.map((row, rIdx) => (
-                <tr key={rIdx} className={highlightRow === rIdx ? 'bg-red-100' : undefined}>
+                <tr
+                   key={rIdx}
+                   className={hl && rIdx === hl.r ? 'bg-blue-100' : (highlightRow === rIdx ? 'bg-red-100' : undefined)}
+                >
                   <td className="border text-center w-[28px] min-w-[28px] max-w-[28px]">
                     <input
                       type="checkbox"
