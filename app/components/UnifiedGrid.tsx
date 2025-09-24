@@ -25,7 +25,7 @@ const LS_UNIFIED_COLUMNS = 'unified_columns';
 const LS_UNIFIED_ROWS    = 'unified_rows';
 
 const CAT_PREFIX         = 'cat_rows:';
-const COLW_GLOBAL_KEY    = 'col_widths:GLOBAL';   // ★ 전역 폭
+const COLW_GLOBAL_KEY    = 'col_widths:GLOBAL';
 const CELLSTYLE_PREFIX   = 'cell_styles:';
 
 const LABELS: Record<string, string> = { 계약자주소: '주소', 특이사항1: '특이사항' };
@@ -82,7 +82,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
       const saved = raw ? JSON.parse(raw) : null;
       const merged = mergeWidths(colsRender, saved);
       setGlobalColW(merged);
-      setDisplayColW(merged); // 최초엔 화면에도 반영
+      setDisplayColW(merged);
     } catch {
       const merged = mergeWidths(colsRender, null);
       setGlobalColW(merged);
@@ -179,10 +179,9 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     if (v == null) return;
     const num = Number(v);
     if (!Number.isFinite(num)) return alert('숫자를 입력하세요.');
-    const px = Math.max(24, Math.round(num)); // 🔒 정수 px 고정
+    const px = Math.max(24, Math.round(num));
     const next = { ...globalColW, [colName]: px };
     saveGlobalWidths(next);
-    // 화면에는 즉시 반영하지 않음(요구사항) → 모드 종료 시 일괄 반영
   };
 
   // 모드 토글 시 화면 반영 규칙: 종료(false)로 바뀌면 전역폭을 화면에 반영
@@ -367,7 +366,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     const [c1, c2] = [Math.min(sel.c1, sel.c2), Math.max(sel.c1, sel.c2)];
     const out: Array<{rowIndex:number; colKey:string}> = [];
     for (let vr = r1; vr <= r2; vr++) {
-      if (vr >= filteredRows.length) break; // 보충된 빈행 제외
+      if (vr >= filteredRows.length) break;
       const viewRow = filteredRows[vr];
       const baseIdx = viewToBaseRowIndex(viewRow);
       if (baseIdx < 0) continue;
@@ -469,7 +468,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     const h = () => loadRows();
     window.addEventListener('unified_rows_updated', h);
     window.addEventListener('rules:category_rebuilt', h);
-    window.addEventListener('unified_columns_width_updated', h); // 폭 변경 시에도 갱신
+    window.addEventListener('unified_columns_width_updated', h);
     window.addEventListener('storage', h as any);
     return () => {
       window.removeEventListener('unified_rows_updated', h);
@@ -541,7 +540,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const isEmptyRow = (row: Row) => colsRender.every(k => ((row?.[k] ?? '') === ''));
 
   const openExt = (rIdx:number, col:string) => {
-    if (col === '0차연장') return; // 0차는 모달 금지
+    if (col === '0차연장') return;
     if (!isExtCol(col)) return;
     const viewRow = data[rIdx];
     if (!viewRow) return;
@@ -575,10 +574,8 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
     next[extRow][extCol] = summary;
 
-    // 총연장횟수 = 1~5차만
     next[extRow]['총연장횟수'] = `${countExt(next[extRow])}회`;
 
-    // 만기일은 종료일에 반영(0차연장과는 무관)
     if ((dataExt.due || '').trim()) {
       next[extRow]['종료일'] = dataExt.due.trim();
     }
@@ -588,8 +585,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     setHighlightRow(null);
   };
 
-  // 시작일/종료일이 유효해지는 순간 0차연장을 "비어있을 때만" 1회 자동 채우고
-  // 총연장횟수(1~5차)도 일괄 보정
+  // 시작일/종료일 유효 → 0차연장 자동/총연장횟수 보정
   useEffect(() => {
     if (!rows.length) return;
     const ymd = /^\d{4}-\d{2}-\d{2}$/;
@@ -682,6 +678,13 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
             }}
           >필터</button>
 
+          {/* ▼ 검색 버튼 복구 */}
+          <button
+            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+            onClick={() => setShowFind(true)}
+            title="데이터 찾기"
+          >검색</button>
+
           <button
             className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
             onClick={() => {
@@ -743,7 +746,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
             <colgroup>
               <col style={{ width: CHECKBOX_W }} />
               {colsRender.map(c => {
-                const w = Math.round(displayColW[c] ?? DEFAULT_W); // 🔒 정수 px
+                const w = Math.round(displayColW[c] ?? DEFAULT_W);
                 return <col key={c} style={{ width: w + 'px' }} />;
               })}
             </colgroup>
@@ -789,7 +792,22 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                         )}
                       </div>
 
-                      {/* 드래그 리사이즈는 제거됨 */}
+                      {/* ▼▼▼ 필터 팝오버 실제 렌더링 ▼▼▼ */}
+                      {filterMode && openFilterCol === c && (
+                        <ExcelFilterPopover
+                          title={`${label(c)} 필터`}
+                          allValues={uniqueValues(c)}
+                          currentSet={filters[c] ?? new Set<string>()}
+                          currentSort={sortMap[c] ?? null}
+                          onApply={(selSet, sort) => {
+                            setFilters(prev => ({ ...prev, [c]: new Set(selSet) }));
+                            setSortMap(prev => ({ ...prev, [c]: sort }));
+                            setOpenFilterCol(null);
+                          }}
+                          onClose={() => setOpenFilterCol(null)}
+                        />
+                      )}
+                      {/* ▲▲▲ 필터 팝오버 렌더링 끝 ▲▲▲ */}
                     </th>
                   );
                 })}
@@ -837,7 +855,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                               const next = prev.map(r => ({ ...r }));
                               next[rIdx][c] = v;
 
-                              // 0차연장: 시작/종료일이 유효해지는 '최초 1회만' 자동 설정
+                              // 0차연장 자동 설정
                               if ((c === '시작일' || c === '종료일') && !((next[rIdx]['0차연장'] ?? '').toString().trim())) {
                                 const s = (next[rIdx]['시작일'] ?? '').toString().trim();
                                 const e2 = (next[rIdx]['종료일'] ?? '').toString().trim();
@@ -848,7 +866,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                                 }
                               }
 
-                              // 1~5차 연장 칸 편집 시 총연장횟수 즉시 반영
+                              // 1~5차 연장 편집 시 총연장횟수 즉시 반영
                               if (/^[1-5]차연장$/.test(c)) {
                                 next[rIdx]['총연장횟수'] = `${countExt(next[rIdx])}회`;
                               }
@@ -1060,6 +1078,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
