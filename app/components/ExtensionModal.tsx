@@ -66,6 +66,9 @@ export default function ExtensionModal({
   initial,
   anchorPoint,
 }: Props) {
+  // ⛔ 닫힘이면 훅 호출 전 즉시 반환 → Hook 순서 오류(#310) 방지
+  if (!open) return null;
+
   /** 위치/드래그 **/
   const [pos, setPos] = useState<{ x: number; y: number }>(() => ({
     x: anchorPoint?.x ?? 80,
@@ -76,7 +79,6 @@ export default function ExtensionModal({
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
     const onMove = (e: MouseEvent) => {
       if (!dragging) return;
       setPos({ x: e.clientX - offset.x, y: e.clientY - offset.y });
@@ -88,42 +90,40 @@ export default function ExtensionModal({
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [dragging, offset, open]);
+  }, [dragging, offset]);
 
-  /** 상태값 (초기값 안전 파싱) */
-  const initDays = Number.isFinite(Number(initial?.days)) ? Number(initial?.days) : 0;
-  const initReason =
-    (initial?.reasons && initial.reasons.length ? initial.reasons[0] : '') || '';
-  const initAmount = Number.isFinite(Number(initial?.amount)) ? Number(initial?.amount) : 0;
-  const initDue = (initial?.due || '').trim();
+  /** 사유 옵션 로드 */
+  const [reasonOptions, setReasonOptions] = useState<string[]>([]);
+  useEffect(() => {
+    setReasonOptions(loadReasonOptions());
+  }, []);
 
+  /** 입력 상태 */
   const [days, setDays] = useState<number>(0);
-const [reasons, setReasons] = useState<string[]>(['']);
-const [amountStr, setAmountStr] = useState<string>('');
-const [dueY, setDueY] = useState<string>(''); 
-const [dueM, setDueM] = useState<string>(''); 
-const [dueD, setDueD] = useState<string>('');
+  const [reasons, setReasons] = useState<string[]>(['']); // 단일 선택 유지
+  const reason = reasons[0] ?? '';
+  const [amountStr, setAmountStr] = useState<string>('');
+  const [dueY, setDueY] = useState<string>(''); 
+  const [dueM, setDueM] = useState<string>(''); 
+  const [dueD, setDueD] = useState<string>('');
 
-// open 또는 initial 변경 시 내부 상태를 초기화
-useEffect(() => {
-  const d0 = Number.isFinite(Number(initial?.days)) ? Number(initial?.days) : 0;
-  const r0 = (initial?.reasons && initial.reasons.length ? initial.reasons[0] : '') || '';
-  const a0 = Number.isFinite(Number(initial?.amount)) ? Number(initial?.amount) : 0;
-  const due0 = (initial?.due || '').trim();
+  // 🔄 모달이 열릴 때/initial 변경 시 내부 상태 초기화 (잔존값 제거)
+  useEffect(() => {
+    const d0 = Number.isFinite(Number(initial?.days)) ? Number(initial?.days) : 0;
+    const r0 = (initial?.reasons && initial.reasons.length ? initial.reasons[0] : '') || '';
+    const a0 = Number.isFinite(Number(initial?.amount)) ? Number(initial?.amount) : 0;
+    const due0 = (initial?.due || '').trim();
 
-  setDays(d0);
-  setReasons([r0]);
-  setAmountStr(formatAmount(a0));
+    setDays(d0);
+    setReasons([r0]);
+    setAmountStr(formatAmount(a0));
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(due0)) {
-    setDueY(due0.slice(0,4)); setDueM(due0.slice(5,7)); setDueD(due0.slice(8,10));
-  } else {
-    setDueY(''); setDueM(''); setDueD('');
-  }
-}, [open, initial]);
-
-    // ✅ 모달 닫힘 상태에서는 훅 실행 전에 바로 리턴 (Hook 순서 오류 방지)
-  if (!open) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(due0)) {
+      setDueY(due0.slice(0,4)); setDueM(due0.slice(5,7)); setDueD(due0.slice(8,10));
+    } else {
+      setDueY(''); setDueM(''); setDueD('');
+    }
+  }, [initial]);
 
   /** 선택 처리 */
   const setReason = (v: string) => setReasons([v]);
@@ -338,6 +338,7 @@ useEffect(() => {
     </div>
   );
 }
+
 
 
 
