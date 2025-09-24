@@ -102,7 +102,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     const mm = (e: MouseEvent) => {
       if (!dragInfo.current) return;
       const { col, startX, startW } = dragInfo.current;
-      // [CHANGE 1] 열 드래그 최소폭 24px 로 더 작게 가능
+      // 최소폭 24px
       const w = Math.max(24, startW + (e.clientX - startX));
       setColW(prev => ({ ...prev, [col]: w }));
     };
@@ -151,7 +151,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         });
       });
 
-      // [CHANGE 2] 붙여넣기 후 0차연장은 '비어 있을 때만' 최초 1회 자동계산
+      // 붙여넣기 후 0차연장은 '비어 있을 때만' 최초 1회 자동 셋팅
       const ymd = /^\d{4}-\d{2}-\d{2}$/;
       for (let r = ri; r < Math.min(ri + lines.length, next.length); r++) {
         const already = (next[r]['0차연장'] ?? '').toString().trim();
@@ -345,7 +345,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   }, [cellStyles, viewId]);
 
   const keyOf = (r:number,c:number) => `${r}:${c}`;
-  const applyColor = (mode: 'bg'|'text', color?: string) => {
+  const applyColor = (mode: 'bg'|'text', color?:string) => {
     setCellStyles(prev => {
       const next = { ...prev };
       if (sel) {
@@ -411,12 +411,11 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     setShowGuide(false);
     setShowCategory(false);
     setMoveOpen(false);
-    // ▼ 소카테고리로 전환 시 편집 UI 상태 초기화
     if (isChildView) {
       setReorderMode(false);
       setShowAdd(false);
     }
-  }, [viewId]); // view 변경 시 초기화
+  }, [viewId]);
 
   const doMove = () => {
     const vendors = Object.keys(checked)
@@ -440,24 +439,23 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const [showExt, setShowExt] = useState(false);
   const [extRow, setExtRow] = useState<number|null>(null);
   const [extCol, setExtCol] = useState<string|null>(null);
-  // 입력 중 강조
   const [highlightRow, setHighlightRow] = useState<number|null>(null);
 
-  const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
+  // 모달 열기 대상: 1~5차만 (0차 제외)
+  const isExtCol = (c:string) => /^[1-5]차연장$/.test(c) || ['1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
 
   const isEmptyRow = (row: Row) => colsRender.every(k => ((row?.[k] ?? '') === ''));
 
-  // 화면 rIdx → 원본 rows 인덱스로 변환 (필터/정렬/빈행보충 대비, 참조/값 모두 시도)
+  // 화면 rIdx → 원본 rows 인덱스로 변환
   const openExt = (rIdx:number, col:string) => {
+    if (col === '0차연장') return; // 0차는 모달 금지
+    if (!isExtCol(col)) return;
     const viewRow = data[rIdx];
     if (!viewRow) return;
-    if (rIdx >= filteredRows.length) return;     // 보충된 빈행 클릭 방지
-    if (isEmptyRow(viewRow)) return;             // 빈 행 방지
+    if (rIdx >= filteredRows.length) return;
+    if (isEmptyRow(viewRow)) return;
 
-    // 1) 참조 동일 매핑
     let baseIdx = rows.indexOf(viewRow);
-
-    // 2) 값으로 보조 매핑
     if (baseIdx < 0) {
       baseIdx = rows.findIndex(r =>
         r === viewRow || colsRender.every(k => (r?.[k] ?? '') === (viewRow?.[k] ?? ''))
@@ -468,10 +466,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     setExtRow(baseIdx);
     setExtCol(col);
     setShowExt(true);
-    setHighlightRow(baseIdx); // 선택 행 빨간 강조
+    setHighlightRow(baseIdx);
   };
 
-  // [CHANGE 3] 연장 저장 시: 종료일 자동반영 유지, 0차연장은 절대 건드리지 않음
+  // 연장 저장: 만기일→종료일 반영, 총연장횟수는 1~5차만 카운트
   const handleSaveExt = (dataExt:{days:number; reasons:string[]; amount:number; due:string}) => {
     if (extRow==null || !extCol) return;
 
@@ -486,19 +484,44 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     next[extRow][extCol] = summary;
 
     const count = colsRender
-      .filter(c => isExtCol(c))
+      .filter(c => /^[1-5]차연장$/.test(c))
       .filter(c => (next[extRow][c] ?? '').toString().trim() !== '').length;
     next[extRow]['총연장횟수'] = `${count}회`;
 
-    // ✅ 만기일은 종료일에 반영(기존 UX 유지). 0차연장은 여기서 절대 수정하지 않음.
     if ((dataExt.due || '').trim()) {
       next[extRow]['종료일'] = dataExt.due.trim();
     }
 
     saveRows(next);
     setShowExt(false); setExtRow(null); setExtCol(null);
-    setHighlightRow(null); // 저장 후 강조 해제
+    setHighlightRow(null);
   };
+
+  // 업로드/전송·직접입력 등 모든 경로에서
+  // 시작일/종료일이 유효해지는 순간 0차연장을 "비어있을 때만" 1회 자동 채움
+  useEffect(() => {
+    if (!rows.length) return;
+    const ymd = /^\d{4}-\d{2}-\d{2}$/;
+    let changed = false;
+    const next = rows.map(r => {
+      const cur = { ...r };
+      const zero = (cur['0차연장'] ?? '').toString().trim();
+      if (!zero) {
+        const s = (cur['시작일'] ?? '').toString().trim();
+        const e2 = (cur['종료일'] ?? '').toString().trim();
+        if (ymd.test(s) && ymd.test(e2)) {
+          const diff = Math.floor((new Date(e2).getTime() - new Date(s).getTime()) / 86400000);
+          if (Number.isFinite(diff)) {
+            cur['0차연장'] = `${diff}일`;
+            changed = true;
+          }
+        }
+      }
+      return cur;
+    });
+    if (changed) saveRows(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
 
   return (
     <div className="bg-white border rounded shadow-sm">
@@ -592,7 +615,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
           </div>
         </div>
         
-        {/* ▼ 요청사항: 소카테고리에서는 4개 버튼 숨김 */}
         {isUnified && (
           <div className="ml-auto flex items-center gap-2">
             <button
@@ -647,7 +669,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                           >▼</button>
                         )}
 
-                        {/* ▼ 소카테고리에서는 열 이동/삭제 UI도 숨김 */}
                         {isUnified && reorderMode && (
                           <span className="flex gap-1">
                             <button className="px-1 text-xs border rounded hover:bg-gray-50" onClick={() => moveCol(idx, -1)} title="왼쪽으로">◀</button>
@@ -720,10 +741,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                         onMouseEnter={() => extendSel(rIdx, ci)}
                         onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
                         style={{ background: style.bg, color: style.color }}
-                        onClick={handleCellClick}  // ★ 클릭으로 모달 열기
+                        onClick={handleCellClick}
                       >
                         <input
-                          className="w-full min-w-0 px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0" // [CHANGE 4] min-w-0로 더 좁게
+                          className="w-full min-w-0 px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0"
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;
@@ -731,7 +752,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                               const next = prev.map(r => ({ ...r }));
                               next[rIdx][c] = v;
 
-                              // [CHANGE 5] 0차연장: 시작/종료일이 유효해지는 '최초 1회만' 자동 설정
+                              // 0차연장: 시작/종료일이 유효해지는 '최초 1회만' 자동 설정
                               if ((c === '시작일' || c === '종료일') && !((next[rIdx]['0차연장'] ?? '').toString().trim())) {
                                 const s = (next[rIdx]['시작일'] ?? '').toString().trim();
                                 const e2 = (next[rIdx]['종료일'] ?? '').toString().trim();
@@ -816,7 +837,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         />
       )}
 
-      {/* ★ 연장 입력 모달 */}
+      {/* ★ 연장 입력 모달 (0차 제외하고 1~5차에서만 open) */}
       <ExtensionModal
         key={showExt && extRow!=null && extCol ? `${extRow}-${extCol}` : 'closed'}
         open={!!showExt && extRow!=null && !!extCol && !!rows[extRow]}
@@ -957,9 +978,6 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
-
-
-
 
 
 
