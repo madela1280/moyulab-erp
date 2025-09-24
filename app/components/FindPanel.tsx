@@ -17,6 +17,7 @@ type Props = {
 
 type Hit = { r: number; c: number; value: string };
 
+<<<<<<< HEAD
 // 허용 열
 const ALLOWED = ['수취인명', '연락처1', '연락처2', '계약자주소', '기기번호'];
 const STORAGE_COLS = 'find_checkedCols';
@@ -74,6 +75,31 @@ export default function FindPanel({
       onChangeCheckedCols(allowedCols);
     }
     // allowedCols 변동 시 한 번 동기화
+=======
+  // 워커 생성/해제
+    useEffect(() => {
+    const w = new Worker(new URL('../workers/findWorker.ts', import.meta.url));
+    workerRef.current = w;
+    w.onmessage = (e: MessageEvent<FindRes>) => {
+      setTotal(e.data.total);
+      setHits(e.data.hits);
+    };
+    return () => { w.terminate(); workerRef.current = null; };
+  }, []);
+
+  // 디바운스 검색
+  const runSearch = (offset=page*LIMIT) => {
+    const req: FindReq = {
+      rows, columns, checkedIndices,
+      query, caseSensitive, wholeCell, wildcard,
+      offset, limit: LIMIT,
+    };
+    workerRef.current?.postMessage(req);
+  };
+  useEffect(() => {
+    const t = setTimeout(() => { setPage(0); runSearch(0); }, 250);
+    return () => clearTimeout(t);
+>>>>>>> 2c131cc (deploy: backup version)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowedCols.join('|')]);
 

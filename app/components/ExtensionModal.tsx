@@ -90,11 +90,10 @@ export default function ExtensionModal({
     };
   }, [dragging, offset, open]);
 
-  if (!open) return null;
-
   /** 상태값 (초기값 안전 파싱) */
   const initDays = Number.isFinite(Number(initial?.days)) ? Number(initial?.days) : 0;
-  const initReason = (initial?.reasons && initial.reasons.length ? initial.reasons[0] : '') || '';
+  const initReason =
+    (initial?.reasons && initial.reasons.length ? initial.reasons[0] : '') || '';
   const initAmount = Number.isFinite(Number(initial?.amount)) ? Number(initial?.amount) : 0;
   const initDue = (initial?.due || '').trim();
 
@@ -119,10 +118,14 @@ export default function ExtensionModal({
       setDueM(d.slice(5, 7));
       setDueD(d.slice(8, 10));
     } else {
-      setDueY(''); setDueM(''); setDueD('');
+      setDueY('');
+      setDueM('');
+      setDueD('');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initDue]);
+
+  // ✅ 훅 호출 이후에 조건부 리턴
+  if (!open) return null;
 
   /** 선택 처리 */
   const setReason = (v: string) => setReasons([v]);
@@ -337,6 +340,7 @@ export default function ExtensionModal({
     </div>
   );
 }
+
 
 
 
