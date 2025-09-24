@@ -10,6 +10,7 @@ import {
 } from '../lib/rules';
 import { GuideRuleModal, CategoryRuleModal } from './RuleModals';
 import FindPanel from './FindPanel';
+import ExtensionModal from './ExtensionModal';
 
 type Row = Record<string, string>;
 
@@ -36,10 +37,7 @@ const BLANK_ROWS = 20;
 
 const CHECKBOX_W = 28;
 
-const BG_COLORS = ['#FDE68A','#BBF7D0','#BFDBFE','#FCA5A5','#F5D0FE','#DDD6FE','#FECACA','#D1FAE5'];
-const TEXT_COLORS = ['#111827','#EF4444','#2563EB','#16A34A','#F97316','#7C3AED','#6B7280','#8B5E3C'];
-
-/* ▼ 날짜 필터 지원: 연/월 토큰 */
+/* ▼ 날짜 필터 지원 */
 const DATE_COLS = new Set(['택배발송일','시작일','종료일','반납요청일','반납완료일','신청일']);
 const isYMD = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
@@ -59,7 +57,6 @@ function loadColumns(): string[] {
 }
 
 export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라인'|'보건소'|'조리원' }) {
-  // ▼ 화면 플래그
   const isUnified = viewId === '통합관리';
   const isChildView = !isUnified;
 
@@ -260,8 +257,20 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
   /** 드래그 선택 & 복사 */
   const tableHostRef = useRef<HTMLDivElement>(null);
+
   const [sel, setSel] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
   const [draggingSel, setDraggingSel] = useState(false);
+  const [hl, setHl] = useState<{ r: number; c: number } | null>(null);
+  const [showFind, setShowFind] = useState(false);
+
+  const [checkedCols, setCheckedCols] = useState<string[]>(() => {
+    const saved = localStorage.getItem('find_checkedCols');
+    return saved ? JSON.parse(saved) : ['수취인명','연락처1','연락처2','계약자주소','기기번호'];
+  });
+  useEffect(() => {
+    localStorage.setItem('find_checkedCols', JSON.stringify(checkedCols));
+  }, [checkedCols]);
+
   const isSelected = (r: number, c: number) => {
     if (!sel) return false;
     const [r1, r2] = [Math.min(sel.r1, sel.r2), Math.max(sel.r1, sel.r2)];
@@ -300,10 +309,8 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     return () => host.removeEventListener('keydown', onKey);
   }, [sel, filteredRows, colsRender]);
 
-  // ▼ 찾기 기능 상태
-  const [showFind, setShowFind] = useState(false);
-  const jumpTo = (r:number, c:number) => {
-    setSel({ r1:r, c1:c, r2:r, c2:c });
+  const jumpTo = (r: number, c: number) => {
+    setSel({ r1: r, c1: c, r2: r, c2: c });
     const host = tableHostRef.current;
     if (host) {
       const rowHeight = 28;
@@ -384,14 +391,17 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const [moveOpen, setMoveOpen] = useState(false);
   const [moveDest, setMoveDest] = useState<Category>('온라인');
 
-  // 화면 바뀌면 모달/팝오버 닫기
   useEffect(() => {
     setShowGuide(false);
     setShowCategory(false);
     setMoveOpen(false);
-  }, [viewId]);
+    // ▼ 소카테고리로 전환 시 편집 UI 상태 초기화
+    if (isChildView) {
+      setReorderMode(false);
+      setShowAdd(false);
+    }
+  }, [viewId]); // view 변경 시 초기화
 
-  // 이동 실행: 선택된 행들의 거래처 기준으로 규칙 갱신 후 카테고리 뷰 재구성
   const doMove = () => {
     const vendors = Object.keys(checked)
       .filter(k => checked[+k])
@@ -407,9 +417,37 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     }
   };
 
-  // 행 값 변경시 자동 적용(거래처→안내분류, 기기번호→기기정보)
   const deviceIndexRef = useRef<Record<string, any> | null>(null);
   const ensureDeviceIdx = () => { if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex(); };
+
+  // ★ 연장 모달 상태/핸들러 (클릭으로 열림)
+  const [showExt, setShowExt] = useState(false);
+  const [extRow, setExtRow] = useState<number|null>(null);
+  const [extCol, setExtCol] = useState<string|null>(null);
+  const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
+  const openExt = (rIdx:number, col:string) => { setExtRow(rIdx); setExtCol(col); setShowExt(true); };
+
+  const handleSaveExt = (data:{days:number; reasons:string[]; amount:number; due:string}) => {
+    if (extRow==null || !extCol) return;
+
+    const next = rows.map(r=>({...r}));
+    const summary = [
+      String(Math.max(0, Math.floor(data.days))),
+      (data.reasons?.[0] ?? '').trim(),
+      String(Math.max(0, Math.floor(data.amount))),
+      (data.due ?? '').trim()
+    ].join('/');
+
+    next[extRow][extCol] = summary;
+
+    const count = colsRender.filter(c => isExtCol(c)).filter(c => (next[extRow][c] ?? '').toString().trim() !== '').length;
+    next[extRow]['총연장횟수'] = `${count}회`;
+
+    if ((data.due||'').trim()) next[extRow]['종료일'] = data.due.trim();
+
+    saveRows(next);
+    setShowExt(false); setExtRow(null); setExtCol(null);
+  };
 
   return (
     <div className="bg-white border rounded shadow-sm">
@@ -417,7 +455,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
       <div className="px-4 py-3 font-semibold border-b flex items-center gap-2">
         <span className={isUnified ? 'text-blue-700' : ''}>{viewId}</span>
 
-        {/* ▼ 버튼들 (조건부 렌더링) */}
         {isUnified && (
           <>
             <button
@@ -462,78 +499,68 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
           </div>
         )}
 
-      <div className="ml-3 flex items-center gap-2">
-  <button
-    className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
-    onClick={() => {
-      setFilterMode(v => {
-        const next = !v;
-        if (!next) { setFilters({}); setSortMap({}); setOpenFilterCol(null); }
-        return next;
-      });
-    }}
-  >필터</button>
+        <div className="ml-3 flex items-center gap-2">
+          <button
+            className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
+            onClick={() => {
+              setFilterMode(v => {
+                const next = !v;
+                if (!next) { setFilters({}); setSortMap({}); setOpenFilterCol(null); }
+                return next;
+              });
+            }}
+          >필터</button>
 
-  <button
-    className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-    onClick={() => {
-      const header = colsRender.join(',');
-      const body = data.map(r =>
-        colsRender.map(c => {
-          const v = (r[c] ?? '').toString().replace(/"/g, '""');
-          return /[",\n]/.test(v) ? `"${v}"` : v;
-        }).join(',')
-      ).join('\n');
-      const csv = header + '\n' + body;
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `${viewId}_export.csv`;
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a); URL.revokeObjectURL(url);
-    }}
-  >다운로드(엑셀)</button>
-
-  <ColorMenu onApply={applyColor} />
-
-  {/* ▼ 찾기 버튼 + 패널 */}
-  <div className="relative">
-    <button
-      className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-      onClick={() => setShowFind(v => !v)}
-    >찾기</button>
-
-    {showFind && (
-      <div className="absolute left-0 top-8 z-40">
-        <FindPanel
-          rows={rows}
-          columns={colsRender}
-          checked={checked}
-          onJump={jumpTo}
-          onClose={() => setShowFind(false)}
-        />
-      </div>
-    )}
-  </div>
-</div>
-        
-        <div className="ml-auto flex items-center gap-2">
           <button
             className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
             onClick={() => {
-              const next = rows.concat(
-                Array.from({ length: 10 }, () => Object.fromEntries(colsRender.map(c => [c, ''])))
-              );
-              saveRows(next);
+              const header = colsRender.join(',');
+              const body = data.map(r =>
+                colsRender.map(c => {
+                  const v = (r[c] ?? '').toString().replace(/"/g, '""');
+                  return /[",\n]/.test(v) ? `"${v}"` : v;
+                }).join(',')
+              ).join('\n');
+              const csv = header + '\n' + body;
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = `${viewId}_export.csv`;
+              document.body.appendChild(a); a.click();
+              document.body.removeChild(a); URL.revokeObjectURL(url);
             }}
-          >행 10 추가</button>
+          >다운로드(엑셀)</button>
 
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
+          <ColorMenu onApply={applyColor} />
 
-          <button className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`} onClick={() => setReorderMode(v => !v)}>열 이동 모드</button>
-
-          <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
+          <div className="relative">
+            <button
+              className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+              onClick={() => setShowFind(true)}
+            >찾기</button>
+          </div>
         </div>
+        
+        {/* ▼ 요청사항: 소카테고리에서는 4개 버튼 숨김 */}
+        {isUnified && (
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+              onClick={() => {
+                const next = rows.concat(
+                  Array.from({ length: 10 }, () => Object.fromEntries(colsRender.map(c => [c, ''])))
+                );
+                saveRows(next);
+              }}
+            >행 10 추가</button>
+
+            <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
+
+            <button className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`} onClick={() => setReorderMode(v => !v)}>열 이동 모드</button>
+
+            <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
+          </div>
+        )}
       </div>
 
       {/* 표 */}
@@ -541,7 +568,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         <div
           ref={tableHostRef}
           tabIndex={0}
-          className="w-full max-h-[calc(100vh-220px)] overflow-auto border rounded outline-none"
+          className="w-full max-h-[calc(100vh-155px)] overflow-auto border rounded outline-none"
         >
           <table className="min-w-[3200px] w-max text-sm border-collapse">
             <colgroup>
@@ -557,7 +584,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                   const activeFilter = (filters[c]?.size ?? 0) > 0 || !!sortMap[c];
                   const allowFilter = true;
                   return (
-                      <th key={c} className="border px-2 py-[0.16rem] text-[0.74rem] text-gray-700 relative select-none">
+                    <th key={c} className="border px-2 py-[0.16rem] text-[0.74rem] text-gray-700 relative select-none">
                       <div className={`flex items-center gap-2 ${c==='계약자주소'?'justify-center':'justify-start'}`}>
                         <span className="whitespace-nowrap">{label(c)}</span>
 
@@ -569,7 +596,8 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                           >▼</button>
                         )}
 
-                        {reorderMode && (
+                        {/* ▼ 소카테고리에서는 열 이동/삭제 UI도 숨김 */}
+                        {isUnified && reorderMode && (
                           <span className="flex gap-1">
                             <button className="px-1 text-xs border rounded hover:bg-gray-50" onClick={() => moveCol(idx, -1)} title="왼쪽으로">◀</button>
                             <button className="px-1 text-xs border rounded hover:bg-gray-50" onClick={() => moveCol(idx, 1)} title="오른쪽으로">▶</button>
@@ -626,17 +654,25 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                   {colsRender.map((c, ci) => {
                     const style = cellStyles[keyOf(rIdx, ci)] ?? {};
                     const val = row[c] ?? '';
+
+                    const handleCellClick = () => {
+                      if (isExtCol(c)) openExt(rIdx, c);
+                    };
+
                     return (
                       <td
                         key={ci}
-                        className={`border px-[0.4rem] py-[0.128rem] ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}`}
+                        className={`border px-[0.4rem] py-[0.128rem]
+                           ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}
+                           ${hl && (hl.r===rIdx || hl.c===ci) ? 'bg-sky-50' : ''}`}
                         onMouseDown={() => startSel(rIdx, ci)}
                         onMouseEnter={() => extendSel(rIdx, ci)}
                         onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); }}
                         style={{ background: style.bg, color: style.color }}
+                        onClick={handleCellClick}  // ★ 클릭으로 모달 열기
                       >
                         <input
-                         className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0"
+                          className="w-full px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0"
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;
@@ -644,7 +680,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                               const next = prev.map(r => ({ ...r }));
                               next[rIdx][c] = v;
 
-                              // 자동 적용: 거래처/기기번호 변경 시
                               if (c === '거래처분류' || c === '기기번호') {
                                 if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex();
                                 applyAutoToRowInPlace(next[rIdx], deviceIndexRef.current || undefined);
@@ -654,6 +689,9 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                           }}
                           onBlur={() => saveRows(rows)}
                           onPaste={(e) => onPaste(rIdx, c, e)}
+                          onClick={(e) => {
+                            if (isExtCol(c)) { e.stopPropagation(); openExt(rIdx, c); }
+                          }}
                         />
                       </td>
                     );
@@ -665,8 +703,8 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         </div>
       </div>
 
-      {/* 양식 추가 모달 */}
-      {showAdd && (
+      {/* 양식 추가 모달: 소카테고리에서는 뜨지 않도록 */}
+      {isUnified && showAdd && (
         <div className="fixed inset-0 z-40 bg-black/30 flex items-center justify-center">
           <div className="bg-white w-[520px] max-w-[95vw] rounded shadow">
             <div className="px-4 py-3 border-b font-semibold">양식 추가(열)</div>
@@ -700,9 +738,44 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         </div>
       )}
 
-      {/* 규칙 모달 (통합관리에서만 표시) */}
       {isUnified && <GuideRuleModal open={showGuide} onClose={()=>setShowGuide(false)} />}
       {isUnified && <CategoryRuleModal open={showCategory} onClose={()=>setShowCategory(false)} />}
+
+      {showFind && (
+        <FindPanel
+          rows={rows}
+          columns={colsRender}
+          checked={checked}
+          checkedCols={checkedCols}
+          onChangeCheckedCols={setCheckedCols}
+          onJump={jumpTo}
+          onHighlight={(r, c) => setHl({ r, c })}
+          onClose={() => { setShowFind(false); setHl(null); }}
+        />
+      )}
+
+      {/* ★ 연장 입력 모달 (원래 흐름 그대로 유지) */}
+      <ExtensionModal
+        open={showExt}
+        initial={
+          extRow!=null && extCol ? (()=>{ 
+            const str = (rows[extRow][extCol] ?? '').toString();
+            // 저장 포맷: "일수/사유/금액/만기일"
+            const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
+
+            const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
+
+            const amountNum = Number((amountStr || '').replace(/[^\d.-]/g, ''));
+            const amount = Number.isFinite(amountNum) ? Math.max(0, Math.floor(amountNum)) : 0;
+
+            const due = /^\d{4}-\d{2}-\d{2}$/.test((endDate || '').trim()) ? (endDate || '').trim() : '';
+
+            return { days, reasons: reason ? [reason] : [''], amount, due };
+          })(): undefined
+        }
+        onSave={handleSaveExt}
+        onClose={()=>setShowExt(false)}
+      />
     </div>
   );
 }
@@ -740,7 +813,7 @@ function ExcelFilterPopover({
   };
 
   return (
-    <div className="absolute z-40 mt-1 w-[260px] bg-white border rounded shadow">
+    <div className="absolute z-40 mt-1 w:[260px] bg-white border rounded shadow">
       <div className="p-2 border-b text-sm font-semibold">{title}</div>
 
       <div className="p-2 flex gap-2">
@@ -821,6 +894,10 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
+
+
+
 
 
 
