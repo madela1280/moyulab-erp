@@ -94,7 +94,6 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const saveGlobalWidths = (map: Record<string, number>) => {
     localStorage.setItem(COLW_GLOBAL_KEY, JSON.stringify(map));
     setGlobalColW(map);
-    // 즉시 화면 반영 여부는 reorderMode에 따라 결정 (아래 useEffect에서 처리)
     window.dispatchEvent(new Event('unified_columns_width_updated'));
   };
 
@@ -106,10 +105,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
       const list = raw ? JSON.parse(raw) : [];
       if (Array.isArray(list) && list.length) setRows(list);
       else {
-        setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
+        setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, ''])));
       }
     } catch {
-      setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
+      setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, ''])));
     }
   };
   const saveRows = (next: Row[]) => {
@@ -176,11 +175,11 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const handleHeaderClickForWidth = (colName: string) => {
     if (!reorderMode) return;
     const cur = globalColW[colName] ?? BASE_WIDTHS[colName] ?? DEFAULT_W;
-    const v = prompt(`"${label(colName)}" 열 너비(px)를 입력하세요. (소수점 한 자리까지, 최소 24)`, String(cur.toFixed(1)));
+    const v = prompt(`"${label(colName)}" 열 너비(px)를 입력하세요. (정수 px, 최소 24)`, String(Math.round(cur)));
     if (v == null) return;
     const num = Number(v);
     if (!Number.isFinite(num)) return alert('숫자를 입력하세요.');
-    const px = Math.max(24, Math.round(num * 10) / 10); // 소수점 1자리
+    const px = Math.max(24, Math.round(num)); // 🔒 정수 px 고정
     const next = { ...globalColW, [colName]: px };
     saveGlobalWidths(next);
     // 화면에는 즉시 반영하지 않음(요구사항) → 모드 종료 시 일괄 반영
@@ -189,14 +188,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   // 모드 토글 시 화면 반영 규칙: 종료(false)로 바뀌면 전역폭을 화면에 반영
   useEffect(() => {
     if (!reorderMode) {
-      // 모드 종료 → 최신 전역폭을 화면에 적용
-      setDisplayColW(prev => {
-        const raw = localStorage.getItem(COLW_GLOBAL_KEY);
-        const saved = raw ? JSON.parse(raw) : null;
-        return mergeWidths(colsRender, saved);
-      });
+      const raw = localStorage.getItem(COLW_GLOBAL_KEY);
+      const saved = raw ? JSON.parse(raw) : null;
+      setDisplayColW(mergeWidths(colsRender, saved));
     }
-    // 시작(true)일 땐 아무것도 하지 않음 (화면 유지)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reorderMode]);
 
@@ -377,7 +372,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     }
   };
 
-  /** 셀 색상 저장 */
+  /** 셀 색상 저장 + 적용 함수 */
   type Style = { bg?: string; color?: string };
   const [cellStyles, setCellStyles] = useState<Record<string, Style>>(() => {
     try { return JSON.parse(localStorage.getItem(cellStyleKey(viewId)) || '{}'); } catch { return {}; }
@@ -385,6 +380,38 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   useEffect(() => {
     localStorage.setItem(cellStyleKey(viewId), JSON.stringify(cellStyles));
   }, [cellStyles, viewId]);
+  function keyOf(r:number,c:number){ return `${r}:${c}`; }
+  const applyColor = (mode: 'bg'|'text', color?:string) => {
+    setCellStyles(prev => {
+      const next = { ...prev };
+      if (sel) {
+        const [r1, r2] = [Math.min(sel.r1, sel.r2), Math.max(sel.r1, sel.r2)];
+        const [c1, c2] = [Math.min(sel.c1, sel.c2), Math.max(sel.c1, sel.c2)];
+        for (let r=r1; r<=r2; r++) {
+          for (let c=c1; c<=c2; c++) {
+            const k = keyOf(r,c);
+            const cur = { ...(next[k] || {}) };
+            if (mode==='bg') { if (color) cur.bg = color; else delete cur.bg; }
+            else { if (color) cur.color = color; else delete cur.color; }
+            if (!cur.bg && !cur.color) delete next[k]; else next[k] = cur;
+          }
+        }
+      }
+      const checkedRows = Object.keys(checked).filter(k => checked[+k]).map(Number);
+      if (checkedRows.length) {
+        checkedRows.forEach(r => {
+          for (let c=0; c<colsRender.length; c++) {
+            const k = keyOf(r,c);
+            const cur = { ...(next[k] || {}) };
+            if (mode==='bg') { if (color) cur.bg = color; else delete cur.bg; }
+            else { if (color) cur.color = color; else delete cur.color; }
+            if (!cur.bg && !cur.color) delete next[k]; else next[k] = cur;
+          }
+        });
+      }
+      return next;
+    });
+  };
 
   /** 초기 로드 & 규칙 이벤트 수신 */
   useEffect(() => {
@@ -541,9 +568,12 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   }, [rows]);
 
   return (
-    <div className="bg-white border rounded shadow-sm">
+    <div
+      className="bg-white border rounded shadow-sm subpixel-antialiased"
+      style={{ WebkitFontSmoothing: 'auto', MozOsxFontSmoothing: 'auto' }}
+    >
       {/* 헤더 바 */}
-      <div className="px-4 py-3 font-semibold border-b flex items-center gap-2">
+      <div className="px-4 py-3 font-semibold border-b flex items-center gap-2 text-gray-900">
         <span className={isUnified ? 'text-blue-700' : ''}>{viewId}</span>
 
         {isUnified && (
@@ -622,7 +652,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
             }}
           >다운로드(엑셀)</button>
 
-          <ColorMenu onApply={(mode, color)=>{ /* 기존 색상 기능 유지 */ }} />
+          <ColorMenu onApply={applyColor} />
         </div>
 
         {/* 우측: 열 이동/폭 조정 */}
@@ -631,7 +661,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
             <>
               <button
                 className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-                title="열 이동 모드 (제목 클릭 시 폭 입력 가능)"
+                title="열 이동 모드 (제목 클릭 시 폭(px) 입력 가능)"
                 onClick={() => setReorderMode(v => !v)}
               >
                 열 이동 모드
@@ -659,13 +689,16 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
           tabIndex={0}
           className="w-full max-h-[calc(100vh-155px)] overflow-auto border rounded outline-none"
         >
-          <table className="min-w-[3200px] w-max text-sm border-collapse">
+          <table className="min-w-[3200px] text-sm border-collapse table-fixed">
             <colgroup>
               <col style={{ width: CHECKBOX_W }} />
-              {colsRender.map(c => <col key={c} style={{ width: (displayColW[c] ?? DEFAULT_W) + 'px' }} />)}
+              {colsRender.map(c => {
+                const w = Math.round(displayColW[c] ?? DEFAULT_W); // 🔒 정수 px
+                return <col key={c} style={{ width: w + 'px' }} />;
+              })}
             </colgroup>
 
-            <thead className="bg-gray-100 sticky top-0 z-10">
+            <thead className="bg-gray-100 sticky top-0 z-10 text-gray-900">
               <tr>
                 <th className="border px-2 py-[0.28rem] w-[28px] min-w-[28px] max-w-[28px] text-center">✔</th>
 
@@ -675,14 +708,14 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                   return (
                     <th
                       key={c}
-                      className="border px-2 py-[0.16rem] text-[0.74rem] text-gray-700 relative select-none"
+                      className="border px-2 py-[0.16rem] text-[0.74rem] relative select-none"
                     >
                       <div
                         className={`flex items-center gap-2 ${c==='계약자주소'?'justify-center':'justify-start'}`}
                       >
                         <button
                           type="button"
-                          className={`whitespace-nowrap ${reorderMode ? 'underline decoration-dotted' : ''}`}
+                          className={`whitespace-nowrap ${reorderMode ? 'underline decoration-dotted' : ''} text-gray-900`}
                           title={reorderMode ? '클릭하여 폭(px) 입력' : ''}
                           onClick={() => handleHeaderClickForWidth(c)}
                         >
@@ -713,7 +746,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
               </tr>
             </thead>
 
-            <tbody>
+            <tbody className="text-gray-900">
               {data.map((row, rIdx) => (
                 <tr key={rIdx} className={highlightRow === rIdx ? 'bg-red-100' : undefined}>
                   <td className="border text-center w-[28px] min-w-[28px] max-w-[28px]">
@@ -734,11 +767,12 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                     return (
                       <td
                         key={ci}
-                        className={`border px-[0.4rem] py-[0.128rem]`}
+                        className="border px-[0.4rem] py-[0.128rem] whitespace-nowrap overflow-hidden text-ellipsis"
                         onClick={handleCellClick}
+                        title={typeof val === 'string' ? val : ''}
                       >
                         <input
-                          className="w-full min-w-0 px-[0.2rem] py-[0.096rem] text-[0.62rem] text-inherit bg-transparent border-0 outline-none focus:ring-0"
+                          className="w-full min-w-0 px-[0.2rem] py-[0.096rem] text-[0.62rem] bg-transparent border-0 outline-none focus:ring-0 truncate text-gray-900"
                           value={val}
                           onChange={(e) => {
                             const v = e.target.value;
@@ -786,8 +820,8 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
       {isUnified && showAdd && (
         <div className="fixed inset-0 z-40 bg-black/30 flex items-center justify-center">
           <div className="bg-white w-[520px] max-w-[95vw] rounded shadow">
-            <div className="px-4 py-3 border-b font-semibold">양식 추가(열)</div>
-            <div className="p-4 space-y-3 text-sm">
+            <div className="px-4 py-3 border-b font-semibold text-gray-900">양식 추가(열)</div>
+            <div className="p-4 space-y-3 text-sm text-gray-900">
               <div>
                 <div className="mb-1">새 항목명</div>
                 <input className="w-full border rounded px-2 py-1" value={newColName} onChange={(e)=>setNewColName(e.target.value)} placeholder="예: 주소2" />
@@ -888,7 +922,7 @@ function ExcelFilterPopover({
   };
 
   return (
-    <div className="absolute z-40 mt-1 w-[260px] bg-white border rounded shadow">
+    <div className="absolute z-40 mt-1 w-[260px] bg-white border rounded shadow text-gray-900">
       <div className="p-2 border-b text-sm font-semibold">{title}</div>
 
       <div className="p-2 flex gap-2">
@@ -925,7 +959,7 @@ function ExcelFilterPopover({
   );
 }
 
-/** 칼라 메뉴(이전 기능 유지: onApply는 상단에서 빈 콜백으로 연결) */
+/** 칼라 메뉴 */
 function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void }) {
   const [open,setOpen]=useState(false);
   const [mode,setMode]=useState<'bg'|'text'>('bg');
@@ -935,7 +969,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     <div className="relative">
       <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={()=>setOpen(v=>!v)}>칼라</button>
       {open && (
-        <div className="absolute z-40 mt-2 w-[220px] bg-white border rounded shadow p-3">
+        <div className="absolute z-40 mt-2 w-[220px] bg-white border rounded shadow p-3 text-gray-900">
           <div className="flex gap-3 mb-2 text-sm">
             <label className="flex items-center gap-1">
               <input type="radio" checked={mode==='bg'} onChange={()=>setMode('bg')} /> 배경
@@ -970,7 +1004,6 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
   );
 }
 
-function keyOf(r:number,c:number){ return `${r}:${c}`; }
 
 
 
