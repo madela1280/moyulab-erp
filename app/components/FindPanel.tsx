@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -17,8 +17,8 @@ type Props = {
 
 type Hit = { r: number; c: number; value: string };
 
-// 허용 열
-const ALLOWED = ['수취인명', '연락처1', '연락처2', '계약자주소', '기기번호'];
+// ?덉슜 ??
+const ALLOWED = ['?섏랬?몃챸', '?곕씫泥?', '?곕씫泥?', '怨꾩빟?먯＜??, '湲곌린踰덊샇'];
 const STORAGE_COLS = 'find_checkedCols';
 const STORAGE_QUERY = 'find_lastQuery';
 
@@ -53,13 +53,13 @@ export default function FindPanel({
   onHighlight,
   onClose,
 }: Props) {
-  // 패널 위치(드래그)
+  // ?⑤꼸 ?꾩튂(?쒕옒洹?
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: 24, y: 60 });
   const draggingRef = useRef<{ dx: number; dy: number } | null>(null);
 
   const allowedCols = useMemo(() => normalizeCols(columns), [columns]);
 
-  // 초기 체크: 저장값 있으면 복원, 없으면 허용열 전체
+  // 珥덇린 泥댄겕: ??κ컪 ?덉쑝硫?蹂듭썝, ?놁쑝硫??덉슜???꾩껜
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_COLS);
@@ -73,10 +73,9 @@ export default function FindPanel({
     } catch {
       onChangeCheckedCols(allowedCols);
     }
-    // allowedCols 변동 시 한 번 동기화
+    // allowedCols 蹂??????踰??숆린??
 
->>>>>>> e56f8a9
-  // 워커 생성/해제
+  // ?뚯빱 ?앹꽦/?댁젣
     useEffect(() => {
     const w = new Worker(new URL('../workers/findWorker.ts', import.meta.url));
     workerRef.current = w;
@@ -87,7 +86,7 @@ export default function FindPanel({
     return () => { w.terminate(); workerRef.current = null; };
   }, []);
 
-  // 디바운스 검색
+  // ?붾컮?댁뒪 寃??
   const runSearch = (offset=page*LIMIT) => {
     const req: FindReq = {
       rows, columns, checkedIndices,
@@ -99,11 +98,10 @@ export default function FindPanel({
   useEffect(() => {
     const t = setTimeout(() => { setPage(0); runSearch(0); }, 250);
     return () => clearTimeout(t);
->>>>>>> 2c131cc (deploy: backup version)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowedCols.join('|')]);
 
-  // 검색어
+  // 寃?됱뼱
   const [query, setQuery] = useState<string>(() => {
     try {
       return localStorage.getItem(STORAGE_QUERY) ?? '';
@@ -112,12 +110,12 @@ export default function FindPanel({
     }
   });
 
-  // 결과 상태
+  // 寃곌낵 ?곹깭
   const [hits, setHits] = useState<Hit[]>([]);
   const [total, setTotal] = useState(0);
   const [curIdx, setCurIdx] = useState(-1);
 
-  // 열 체크 토글 + 저장
+  // ??泥댄겕 ?좉? + ???
   const toggleCol = (col: string) => {
     const set = new Set(checkedCols);
     if (set.has(col)) set.delete(col);
@@ -129,7 +127,7 @@ export default function FindPanel({
     } catch {}
   };
 
-  // 드래그 핸들
+  // ?쒕옒洹??몃뱾
   const onDragStart = (e: React.MouseEvent) => {
     draggingRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
     window.addEventListener('mousemove', onDragMove);
@@ -146,7 +144,7 @@ export default function FindPanel({
     window.removeEventListener('mouseup', onDragEnd);
   };
 
-  // 공통 검색 실행
+  // 怨듯넻 寃???ㅽ뻾
   const runSearch = (focusFirst: boolean) => {
     const cols = allowedCols.filter(c => checkedCols.includes(c));
     const res = searchSync(rows, cols, query);
@@ -162,12 +160,12 @@ export default function FindPanel({
     }
   };
 
-  // 모두 찾기
+  // 紐⑤몢 李얘린
   const onFindAll = () => {
     runSearch(true);
   };
 
-  // 다음 찾기 (사전 모두찾기 없이도 동작)
+  // ?ㅼ쓬 李얘린 (?ъ쟾 紐⑤몢李얘린 ?놁씠???숈옉)
   const onFindNext = () => {
     const cols = allowedCols.filter(c => checkedCols.includes(c));
     if (!query.trim() || cols.length === 0) return;
@@ -186,12 +184,12 @@ export default function FindPanel({
     onJump(h.r, h.c);
   };
 
-  // 닫기
+  // ?リ린
   const handleClose = () => {
     setHits([]);
     setTotal(0);
     setCurIdx(-1);
-    onHighlight?.(Number.NaN as any, Number.NaN as any); // 부모에서 null 처리
+    onHighlight?.(Number.NaN as any, Number.NaN as any); // 遺紐⑥뿉??null 泥섎━
     onClose();
   };
 
@@ -200,18 +198,18 @@ export default function FindPanel({
       className="fixed z-50 w-[360px] rounded-lg border shadow bg-white"
       style={{ left: pos.x, top: pos.y }}
     >
-      {/* 드래그 핸들 */}
+      {/* ?쒕옒洹??몃뱾 */}
       <div
         className="cursor-move px-3 py-2 text-sm font-semibold bg-gray-100 border-b select-none"
         onMouseDown={onDragStart}
       >
-        찾기
+        李얘린
       </div>
 
       <div className="p-3 space-y-3">
-        {/* 열 선택 */}
+        {/* ???좏깮 */}
         <div className="text-xs">
-          <div className="mb-1 font-semibold">열 선택</div>
+          <div className="mb-1 font-semibold">???좏깮</div>
           <div className="flex flex-wrap gap-2">
             {allowedCols.map(col => (
               <label key={col} className="inline-flex items-center gap-1 border rounded px-2 py-1">
@@ -226,11 +224,11 @@ export default function FindPanel({
           </div>
         </div>
 
-        {/* 검색어 */}
+        {/* 寃?됱뼱 */}
         <div className="space-y-2">
           <input
             className="w-full border rounded px-2 py-1 text-sm"
-            placeholder="찾을 내용"
+            placeholder="李얠쓣 ?댁슜"
             value={query}
             onChange={e => {
               const v = e.target.value;
@@ -238,7 +236,7 @@ export default function FindPanel({
               try {
                 localStorage.setItem(STORAGE_QUERY, v);
               } catch {}
-              // 입력이 바뀌면 이전 결과/포커스 초기화 → '다음 찾기' 단독 시 새 검색
+              // ?낅젰??諛붾뚮㈃ ?댁쟾 寃곌낵/?ъ빱??珥덇린????'?ㅼ쓬 李얘린' ?⑤룆 ????寃??
               setHits([]);
               setTotal(0);
               setCurIdx(-1);
@@ -250,31 +248,31 @@ export default function FindPanel({
           />
         </div>
 
-        {/* 액션 */}
+        {/* ?≪뀡 */}
         <div className="flex items-center gap-2">
           <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindAll}>
-            모두 찾기
+            紐⑤몢 李얘린
           </button>
           <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={onFindNext}>
-            다음 찾기
+            ?ㅼ쓬 李얘린
           </button>
           <div className="ml-auto text-xs text-gray-600">
-            건수: {total}
+            嫄댁닔: {total}
             {hits.length ? ` (${curIdx + 1}/${hits.length})` : ''}
           </div>
         </div>
 
-        {/* 결과 리스트 */}
+        {/* 寃곌낵 由ъ뒪??*/}
         <div className="max-h-48 overflow-auto border rounded">
           {hits.length === 0 ? (
-            <div className="text-xs text-gray-400 p-2">결과 없음</div>
+            <div className="text-xs text-gray-400 p-2">寃곌낵 ?놁쓬</div>
           ) : (
             <table className="w-full text-xs">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="border px-2 py-1 text-left">행</th>
-                  <th className="border px-2 py-1 text-left">열</th>
-                  <th className="border px-2 py-1 text-left">값</th>
+                  <th className="border px-2 py-1 text-left">??/th>
+                  <th className="border px-2 py-1 text-left">??/th>
+                  <th className="border px-2 py-1 text-left">媛?/th>
                 </tr>
               </thead>
               <tbody>
@@ -306,7 +304,7 @@ export default function FindPanel({
 
         <div className="flex justify-end">
           <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={handleClose}>
-            닫기
+            ?リ린
           </button>
         </div>
       </div>
