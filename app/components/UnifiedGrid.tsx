@@ -105,10 +105,10 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
       const list = raw ? JSON.parse(raw) : [];
       if (Array.isArray(list) && list.length) setRows(list);
       else {
-        setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, ''])));
+       setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
       }
     } catch {
-      setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, ''])));
+      setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
     }
   };
   const saveRows = (next: Row[]) => {
