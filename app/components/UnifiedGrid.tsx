@@ -426,12 +426,18 @@ const [extRow, setExtRow] = useState<number|null>(null);
 const [extCol, setExtCol] = useState<string|null>(null);
 const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
 
-// data는 필터링/정렬된 배열 → 원본 rows 인덱스를 보관해야 함
 const openExt = (rIdx:number, col:string) => {
-  const row = data[rIdx];
-  if (!row) return;
-  const baseIdx = rows.findIndex(r => r === row);  // 객체 동일성 비교
-  if (baseIdx === -1) return;                      // 보충된 빈행은 무시
+  const viewRow = data[rIdx];
+  if (!viewRow) return;
+
+  let baseIdx = rows.indexOf(viewRow);
+  if (baseIdx < 0) {
+    baseIdx = rows.findIndex(r =>
+      r === viewRow || colsRender.every(k => (r?.[k] ?? '') === (viewRow?.[k] ?? ''))
+    );
+  }
+  if (baseIdx < 0) return; // 빈 보충행 등 무시
+
   setExtRow(baseIdx);
   setExtCol(col);
   setShowExt(true);
