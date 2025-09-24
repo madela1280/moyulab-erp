@@ -421,45 +421,49 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const ensureDeviceIdx = () => { if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex(); };
 
   // ★ 연장 모달 상태/핸들러 (클릭으로 열림)
-const [showExt, setShowExt] = useState(false);
-const [extRow, setExtRow] = useState<number|null>(null);
-const [extCol, setExtCol] = useState<string|null>(null);
-const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
+  const [showExt, setShowExt] = useState(false);
+  const [extRow, setExtRow] = useState<number|null>(null);
+  const [extCol, setExtCol] = useState<string|null>(null);
+  // ▼ 추가: 모달 입력 중 행 강조
+  const [highlightRow, setHighlightRow] = useState<number|null>(null);
 
-const isEmptyRow = (row: Row) => colsRender.every(k => ((row?.[k] ?? '') === ''));
+  const isExtCol = (c:string) => /^\d+차연장$/.test(c) || ['0차연장','1차연장','2차연장','3차연장','4차연장','5차연장'].includes(c);
 
-// 화면 rIdx → 원본 rows 인덱스로 변환 (필터/정렬/빈행보충 대비, 참조/값 모두 시도)
-const openExt = (rIdx:number, col:string) => {
-  const viewRow = data[rIdx];
-  if (!viewRow) return;
-  if (rIdx >= filteredRows.length) return;     // 보충된 빈행 클릭 방지
-  if (isEmptyRow(viewRow)) return;             // 빈 행 방지
+  const isEmptyRow = (row: Row) => colsRender.every(k => ((row?.[k] ?? '') === ''));
 
-  // 1) 참조 동일 매핑
-  let baseIdx = rows.indexOf(viewRow);
+  // 화면 rIdx → 원본 rows 인덱스로 변환 (필터/정렬/빈행보충 대비, 참조/값 모두 시도)
+  const openExt = (rIdx:number, col:string) => {
+    const viewRow = data[rIdx];
+    if (!viewRow) return;
+    if (rIdx >= filteredRows.length) return;     // 보충된 빈행 클릭 방지
+    if (isEmptyRow(viewRow)) return;             // 빈 행 방지
 
-  // 2) 값으로 보조 매핑 (모든 표시 열이 동일한 첫 번째 행)
-  if (baseIdx < 0) {
-    baseIdx = rows.findIndex(r =>
-      r === viewRow || colsRender.every(k => (r?.[k] ?? '') === (viewRow?.[k] ?? ''))
-    );
-  }
-  if (baseIdx < 0) return;
+    // 1) 참조 동일 매핑
+    let baseIdx = rows.indexOf(viewRow);
 
-  setExtRow(baseIdx);
-  setExtCol(col);
-  setShowExt(true);
-};
+    // 2) 값으로 보조 매핑 (모든 표시 열이 동일한 첫 번째 행)
+    if (baseIdx < 0) {
+      baseIdx = rows.findIndex(r =>
+        r === viewRow || colsRender.every(k => (r?.[k] ?? '') === (viewRow?.[k] ?? ''))
+      );
+    }
+    if (baseIdx < 0) return;
 
-  const handleSaveExt = (data:{days:number; reasons:string[]; amount:number; due:string}) => {
+    setExtRow(baseIdx);
+    setExtCol(col);
+    setShowExt(true);
+    setHighlightRow(baseIdx); // 선택 행 빨간 강조
+  };
+
+  const handleSaveExt = (dataExt:{days:number; reasons:string[]; amount:number; due:string}) => {
     if (extRow==null || !extCol) return;
 
     const next = rows.map(r=>({...r}));
     const summary = [
-      String(Math.max(0, Math.floor(data.days))),
-      (data.reasons?.[0] ?? '').trim(),
-      String(Math.max(0, Math.floor(data.amount))),
-      (data.due ?? '').trim()
+      String(Math.max(0, Math.floor(dataExt.days))),
+      (dataExt.reasons?.[0] ?? '').trim(),
+      String(Math.max(0, Math.floor(dataExt.amount))),
+      (dataExt.due ?? '').trim()
     ].join('/');
 
     next[extRow][extCol] = summary;
@@ -467,10 +471,11 @@ const openExt = (rIdx:number, col:string) => {
     const count = colsRender.filter(c => isExtCol(c)).filter(c => (next[extRow][c] ?? '').toString().trim() !== '').length;
     next[extRow]['총연장횟수'] = `${count}회`;
 
-    if ((data.due||'').trim()) next[extRow]['종료일'] = data.due.trim();
+    if ((dataExt.due||'').trim()) next[extRow]['종료일'] = dataExt.due.trim();
 
     saveRows(next);
     setShowExt(false); setExtRow(null); setExtCol(null);
+    setHighlightRow(null); // 저장 후 강조 해제
   };
 
   return (
@@ -666,7 +671,7 @@ const openExt = (rIdx:number, col:string) => {
 
             <tbody>
               {data.map((row, rIdx) => (
-                <tr key={rIdx}>
+                <tr key={rIdx} className={highlightRow === rIdx ? 'bg-red-100' : undefined}>
                   <td className="border text-center w-[28px] min-w-[28px] max-w-[28px]">
                     <input
                       type="checkbox"
@@ -778,26 +783,29 @@ const openExt = (rIdx:number, col:string) => {
         />
       )}
 
-    {/* ★ 연장 입력 모달 */}
-<ExtensionModal
-  key={showExt && extRow!=null && extCol ? `${extRow}-${extCol}` : 'closed'} // ⬅ 모달 재마운트로 상태 꼬임 방지
-  open={!!showExt && extRow!=null && !!extCol && !!rows[extRow]}             // ⬅ 안전 오픈 가드
-  initial={
-    (extRow!=null && extCol && rows[extRow]) ? (()=>{ 
-      const str = ((rows[extRow] ?? {})[extCol] ?? '').toString();
-      const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
+      {/* ★ 연장 입력 모달 */}
+      <ExtensionModal
+        key={showExt && extRow!=null && extCol ? `${extRow}-${extCol}` : 'closed'}
+        open={!!showExt && extRow!=null && !!extCol && !!rows[extRow]}
+        initial={
+          (extRow!=null && extCol && rows[extRow]) ? (()=>{ 
+            const str = ((rows[extRow] ?? {})[extCol] ?? '').toString();
+            // 저장 포맷: "일수/사유/금액/만기일"
+            const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
 
-      const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
-      const amountNum = Number((amountStr || '').replace(/[^\d.-]/g, ''));
-      const amount = Number.isFinite(amountNum) ? Math.max(0, Math.floor(amountNum)) : 0;
-      const due = /^\d{4}-\d{2}-\d{2}$/.test((endDate || '').trim()) ? (endDate || '').trim() : '';
+            const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
 
-      return { days, reasons: reason ? [reason] : [''], amount, due };
-    })(): undefined
-  }
-  onSave={handleSaveExt}
-  onClose={()=>setShowExt(false)}
-/>
+            const amountNum = Number((amountStr || '').replace(/[^\d.-]/g, ''));
+            const amount = Number.isFinite(amountNum) ? Math.max(0, Math.floor(amountNum)) : 0;
+
+            const due = /^\d{4}-\d{2}-\d{2}$/.test((endDate || '').trim()) ? (endDate || '').trim() : '';
+
+            return { days, reasons: reason ? [reason] : [''], amount, due };
+          })(): undefined
+        }
+        onSave={handleSaveExt}
+        onClose={()=>{ setShowExt(false); setHighlightRow(null); }}
+      />
     </div>
   );
 }
@@ -916,6 +924,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
