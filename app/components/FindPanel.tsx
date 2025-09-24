@@ -17,9 +17,6 @@ type Props = {
 
 type Hit = { r: number; c: number; value: string };
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
 // 허용 열
 const ALLOWED = ['수취인명', '연락처1', '연락처2', '계약자주소', '기기번호'];
 const STORAGE_COLS = 'find_checkedCols';
@@ -77,7 +74,7 @@ export default function FindPanel({
       onChangeCheckedCols(allowedCols);
     }
     // allowedCols 변동 시 한 번 동기화
-=======
+
 >>>>>>> e56f8a9
   // 워커 생성/해제
     useEffect(() => {
