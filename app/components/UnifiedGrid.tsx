@@ -621,26 +621,25 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     >
       {/* 헤더 바 */}
       <div className="px-4 py-3 font-semibold border-b flex items-center gap-2 text-gray-900">
+        {/* 제목 */}
         <span className={isUnified ? 'text-blue-700' : ''}>{viewId}</span>
 
-        {isUnified && (
+        {/* 좌측: 안내/분류 or 이동 */}
+        {isUnified ? (
           <>
             <button
               className="ml-3 px-2 py-1 text-xs border rounded hover:bg-gray-50"
               onClick={()=>setShowGuide(true)}
               title="거래처→안내분류 규칙 관리"
             >안내분류</button>
-
             <button
               className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
               onClick={()=>setShowCategory(true)}
               title="거래처→온라인/보건소/조리원 규칙 관리"
             >분류</button>
           </>
-        )}
-
-        {isChildView && (
-          <div className="relative">
+        ) : (
+          <div className="relative ml-3">
             <button
               className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
               onClick={()=>setMoveOpen(v=>!v)}
@@ -667,6 +666,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
           </div>
         )}
 
+        {/* 좌측: 필터/검색/다운로드/칼라/오류검사 */}
         <div className="ml-3 flex items-center gap-2">
           <button
             className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
@@ -679,81 +679,76 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
             }}
           >필터</button>
 
-       {/* ▼ 검색 버튼 복구 */}
-<button
-  className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-  onClick={() => setShowFind(true)}
-  title="데이터 찾기"
->
-  검색
-</button>
+          <button
+            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+            onClick={() => setShowFind(true)}
+            title="데이터 찾기"
+          >검색</button>
 
-{/* ▼ 다운로드 버튼 (필터 적용 + 엑셀 한글 깨짐 방지) */}
-<button
-  className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-  onClick={() => {
-    const BOM = '\uFEFF';
-    const src = (filteredRows && filteredRows.length ? filteredRows : rows).filter(r => !isEmptyRow(r));
-    const header = colsRender.join(',');
-    const body = src.map(r =>
-      colsRender.map(c => {
-        const v = (r[c] ?? '').toString();
-        const s = v.replace(/"/g, '""');
-        return /[",\n]/.test(s) ? `"${s}"` : s;
-      }).join(',')
-    ).join('\n');
+          <button
+            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+            onClick={() => {
+              const BOM = '\uFEFF';
+              const src = (filteredRows && filteredRows.length ? filteredRows : rows).filter(r => !isEmptyRow(r));
+              const header = colsRender.join(',');
+              const body = src.map(r =>
+                colsRender.map(c => {
+                  const v = (r[c] ?? '').toString();
+                  const s = v.replace(/"/g, '""');
+                  return /[",\n]/.test(s) ? `"${s}"` : s;
+                }).join(',')
+              ).join('\n');
 
-    const csv = BOM + header + '\n' + body;
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${viewId}_export.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }}
->
-  다운로드(엑셀)
-</button>
+              const csv = BOM + header + '\n' + body;
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${viewId}_export.csv`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+          >다운로드(엑셀)</button>
 
-{/* 우측: 열 이동/폭 조정 */}
-<div className="ml-auto flex items-center gap-2">
-  {isUnified && (
-    <>
-      <button
-        className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-        title="열 이동 모드 (제목 클릭 시 폭(px) 입력 가능)"
-        onClick={() => setReorderMode(v => !v)}
-      >
-        열 이동 모드
-      </button>
-      <button
-        className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-        onClick={() => {
-          const next = rows.concat(
-            Array.from({ length: 10 }, () => Object.fromEntries(colsRender.map(c => [c, ''])))
-          );
-          saveRows(next);
-        }}
-      >
-        행 10 추가
-      </button>
-      <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
-      <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
-    </>
-  )}
-</div>
-</div>
-</div>  {/* ← 이 닫힘 1줄 추가: 헤더 바(<div className="px-4 py-3 ...">) 닫기 */}
-         
+          <ColorMenu onApply={applyColor} />
+          <ErrorCheckMenu rows={rows} />
+        </div>
+
+        {/* 우측: 열 이동/폭/행 추가/양식 추가/선택 삭제 */}
+        <div className="ml-auto flex items-center gap-2">
+          {isUnified && (
+            <>
+              <button
+                className={`px-2 py-1 text-xs border rounded ${reorderMode ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                title="열 이동 모드 (제목 클릭 시 폭(px) 입력 가능)"
+                onClick={() => setReorderMode(v => !v)}
+              >
+                열 이동 모드
+              </button>
+              <button
+                className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+                onClick={() => {
+                  const next = rows.concat(
+                    Array.from({ length: 10 }, () => Object.fromEntries(colsRender.map(c => [c, ''])))
+                  );
+                  saveRows(next);
+                }}
+              >행 10 추가</button>
+              <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setShowAdd(true)}>양식 추가(열)</button>
+              <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={deleteSelected}>선택 삭제</button>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* 표 */}
       <div className="p-2">
         <div
           ref={tableHostRef}
           tabIndex={0}
-          className="w-full max-h-[calc(100vh-155px)] overflow-auto border rounded outline-none"
+          className="w-full max-h=[calc(100vh-155px)] max-h-[calc(100vh-155px)] overflow-auto border rounded outline-none"
         >
           <table className="min-w-[3200px] text-sm border-collapse table-fixed">
             <colgroup>
@@ -963,7 +958,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
         key={showExt && extRow!=null && extCol ? `${extRow}-${extCol}` : 'closed'}
         open={!!showExt && extRow!=null && !!extCol && isExtCol(extCol) && !!rows[extRow]}
         initial={
-          (extRow!=null && extCol && rows[extRow]) ? (()=>{
+          (extRow!=null && extCol && rows[extRow]) ? (()=>{ 
             const str = ((rows[extRow] ?? {})[extCol] ?? '').toString();
             const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
             const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
@@ -1094,6 +1089,7 @@ function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void
     </div>
   );
 }
+
 
 
 
