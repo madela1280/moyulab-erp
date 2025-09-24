@@ -778,8 +778,9 @@ const openExt = (rIdx:number, col:string) => {
         />
       )}
 
-      {/* ★ 연장 입력 모달 (원래 흐름 그대로 유지) */}
-     <ExtensionModal
+    {/* ★ 연장 입력 모달 (원래 흐름 그대로 유지) */}
+<ExtensionModal
+  key={showExt && extRow!=null && extCol ? `${extRow}-${extCol}` : 'closed'}
   open={showExt}
   initial={
     (extRow!=null && extCol && rows[extRow]) ? (()=>{ 

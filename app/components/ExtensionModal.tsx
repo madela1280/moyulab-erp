@@ -97,34 +97,32 @@ export default function ExtensionModal({
   const initAmount = Number.isFinite(Number(initial?.amount)) ? Number(initial?.amount) : 0;
   const initDue = (initial?.due || '').trim();
 
-  const [days, setDays] = useState<number>(initDays);
-  const [reasons, setReasons] = useState<string[]>([initReason]); // 단일 선택 유지
-  const reason = reasons[0] ?? '';
+  const [days, setDays] = useState<number>(0);
+const [reasons, setReasons] = useState<string[]>(['']);
+const [amountStr, setAmountStr] = useState<string>('');
+const [dueY, setDueY] = useState<string>(''); 
+const [dueM, setDueM] = useState<string>(''); 
+const [dueD, setDueD] = useState<string>('');
 
-  const [reasonOptions, setReasonOptions] = useState<string[]>([]);
-  useEffect(() => {
-    if (open) setReasonOptions(loadReasonOptions());
-  }, [open]);
+// open 또는 initial 변경 시 내부 상태를 초기화
+useEffect(() => {
+  const d0 = Number.isFinite(Number(initial?.days)) ? Number(initial?.days) : 0;
+  const r0 = (initial?.reasons && initial.reasons.length ? initial.reasons[0] : '') || '';
+  const a0 = Number.isFinite(Number(initial?.amount)) ? Number(initial?.amount) : 0;
+  const due0 = (initial?.due || '').trim();
 
-  const [amountStr, setAmountStr] = useState<string>(formatAmount(initAmount));
+  setDays(d0);
+  setReasons([r0]);
+  setAmountStr(formatAmount(a0));
 
-  const [dueY, setDueY] = useState<string>('');
-  const [dueM, setDueM] = useState<string>('');
-  const [dueD, setDueD] = useState<string>('');
-  useEffect(() => {
-    const d = initDue;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
-      setDueY(d.slice(0, 4));
-      setDueM(d.slice(5, 7));
-      setDueD(d.slice(8, 10));
-    } else {
-      setDueY('');
-      setDueM('');
-      setDueD('');
-    }
-  }, [initDue]);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(due0)) {
+    setDueY(due0.slice(0,4)); setDueM(due0.slice(5,7)); setDueD(due0.slice(8,10));
+  } else {
+    setDueY(''); setDueM(''); setDueD('');
+  }
+}, [open, initial]);
 
-  // ✅ 훅 호출 이후에 조건부 리턴 (Hook 순서 보장)
+    // ✅ 모달 닫힘 상태에서는 훅 실행 전에 바로 리턴 (Hook 순서 오류 방지)
   if (!open) return null;
 
   /** 선택 처리 */
