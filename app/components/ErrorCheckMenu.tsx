@@ -45,7 +45,7 @@ type ResultItem = {
 
 export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
   const [open, setOpen] = useState(false);
-  const [modal, setModal] = useState<null | { kind: 'device' | 'recipient'; rows: ResultItem[] }>(null);
+  const [modal, setModal] = useState<null | { kind: 'device' | 'recipient' | 'unregistered'; rows: ResultItem[] }>(null);
 
   const sourceRows = useMemo<Row[]>(() => {
     return (rows && Array.isArray(rows) ? rows : loadUnifiedRows()) as Row[];
@@ -84,7 +84,13 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
   };
 
   const runRecipientCheck = () => {
-    const active = sourceRows.filter(r => (r['반납완료일'] ?? '') === '');
+    const active = sourceRows.filter(r => {
+      if ((r['반납완료일'] ?? '') !== '') return false;
+      const vendor = (r['거래처분류'] ?? '').toString();
+      if (vendor.startsWith('조리원')) return false; // ⬅️ 조리원 제외
+      return true;
+    });
+
     const byPerson = new Map<string, ResultItem[]>();
     for (const r of active) {
       const name = (r['수취인명'] ?? '').toString().trim();
@@ -102,9 +108,32 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
     setOpen(false);
   };
 
+  const runUnregisteredCheck = () => {
+    // 기기관리 rows 불러오기
+    let deviceRows: Row[] = [];
+    try {
+      const raw = localStorage.getItem('cat_rows:기기관리');
+      deviceRows = raw ? JSON.parse(raw) : [];
+    } catch {}
+    const registered = new Set(deviceRows.map(d => (d['기기번호'] ?? '').toString().trim()));
+
+    const active = sourceRows.filter(r => (r['반납완료일'] ?? '') === '');
+    const result = active.filter(r => {
+      const dev = (r['기기번호'] ?? '').toString().trim();
+      return dev && !registered.has(dev);
+    }).map(r => toItem(r, r['기기번호'] ?? ''));
+
+    result.sort((a, b) => (a.기기번호 ?? '').localeCompare(b.기기번호 ?? ''));
+    setModal({ kind: 'unregistered', rows: result });
+    setOpen(false);
+  };
+
   const title = useMemo(() => {
     if (!modal) return '';
-    return modal.kind === 'device' ? '기기번호 중복/오류 결과' : '수취인 중복/오류 결과';
+    if (modal.kind === 'device') return '기기번호 중복/오류 결과';
+    if (modal.kind === 'recipient') return '수취인 중복/오류 결과';
+    if (modal.kind === 'unregistered') return '미등록 기기 검사 결과';
+    return '';
   }, [modal]);
 
   const downloadCSV = () => {
@@ -154,9 +183,10 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
       {open && (
         <div className="absolute z-40 mt-2 w-[200px] bg-white border rounded shadow p-2 text-gray-900">
           <div className="text-[10px] text-gray-600 mb-1">검사 대상</div>
-          <div className="flex gap-2">
-            <button className="flex-1 px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runDeviceCheck}>기기번호</button>
-            <button className="flex-1 px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runRecipientCheck}>수취인</button>
+          <div className="flex flex-col gap-1">
+            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runDeviceCheck}>기기번호</button>
+            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runRecipientCheck}>수취인</button>
+            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runUnregisteredCheck}>미등록 기기</button>
           </div>
         </div>
       )}
@@ -218,4 +248,5 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
     </div>
   );
 }
+
 
