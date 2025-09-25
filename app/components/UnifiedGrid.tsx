@@ -843,41 +843,59 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                       if (isExtCol(c)) openExt(rIdx, c);
                     };
 
-                    return (
-                      <td
-                        key={ci}
-                        className={`border px-[0.4rem] py-[0.128rem] whitespace-nowrap overflow-hidden text-ellipsis
-                          ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}`}
-                        onClick={handleCellClick}
-                        onMouseDown={() => startSel(rIdx, ci)}
-                        onMouseEnter={() => extendSel(rIdx, ci)}
-                        title={typeof val === 'string' ? val : ''}
-                        <input
-  className="w-full min-w-0 px-[0.2rem] py-[0.096rem] text-[0.62rem] bg-transparent border-0 outline-none focus:ring-0 truncate text-gray-900"
-  style={{ color: (cellStyles[`${rIdx}:${ci}`]?.color) ?? undefined }}
-  value={val}
-                                  const diff = Math.floor((new Date(e2).getTime() - new Date(s).getTime()) / 86400000);
-                                  if (Number.isFinite(diff)) next[rIdx]['0차연장'] = `${diff}일`;
-                                }
-                              }
+                   return (
+  <td
+    key={ci}
+    className={`border px-[0.4rem] py-[0.128rem] whitespace-nowrap overflow-hidden text-ellipsis
+      ${isSelected(rIdx, ci) ? 'bg-blue-50' : ''}`}
+    onClick={handleCellClick}
+    onMouseDown={() => startSel(rIdx, ci)}
+    onMouseEnter={() => extendSel(rIdx, ci)}
+    title={typeof val === 'string' ? val : ''}
+    style={{
+      background: (cellStyles[`${rIdx}:${ci}`]?.bg) ?? undefined,
+      color: (cellStyles[`${rIdx}:${ci}`]?.color) ?? undefined,
+    }}
+  >
+    <input
+      className="w-full min-w-0 px-[0.2rem] py-[0.096rem] text-[0.62rem] bg-transparent border-0 outline-none focus:ring-0 truncate text-gray-900"
+      style={{ color: (cellStyles[`${rIdx}:${ci}`]?.color) ?? undefined }}
+      value={val}
+      onChange={(e) => {
+        const v = e.target.value;
+        setRows(prev => {
+          const next = prev.map(r => ({ ...r }));
+          next[rIdx][c] = v;
 
-                              // 1~5차 연장 편집 시 총연장횟수 즉시 반영
-                              if (/^[1-5]차연장$/.test(c)) {
-                                next[rIdx]['총연장횟수'] = `${countExt(next[rIdx])}회`;
-                              }
+          // 0차연장 자동 설정 (비어있을 때만 1회)
+          if ((c === '시작일' || c === '종료일') && !((next[rIdx]['0차연장'] ?? '').toString().trim())) {
+            const s = (next[rIdx]['시작일'] ?? '').toString().trim();
+            const e2 = (next[rIdx]['종료일'] ?? '').toString().trim();
+            const ymd = /^\d{4}-\d{2}-\d{2}$/;
+            if (ymd.test(s) && ymd.test(e2)) {
+              const diff = Math.floor((new Date(e2).getTime() - new Date(s).getTime()) / 86400000);
+              if (Number.isFinite(diff)) next[rIdx]['0차연장'] = `${diff}일`;
+            }
+          }
 
-                              if (c === '거래처분류' || c === '기기번호') {
-                                if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex();
-                                applyAutoToRowInPlace(next[rIdx], deviceIndexRef.current || undefined);
-                              }
-                              return next;
-                            });
-                          }}
-                          onBlur={() => saveRows(rows)}
-                          onPaste={(e) => onPaste(rIdx, c, e)}
-                        />
-                      </td>
-                    );
+          // 1~5차 연장 편집 시 총연장횟수 즉시 반영
+          if (/^[1-5]차연장$/.test(c)) {
+            next[rIdx]['총연장횟수'] = `${countExt(next[rIdx])}회`;
+          }
+
+          if (c === '거래처분류' || c === '기기번호') {
+            if (!deviceIndexRef.current) deviceIndexRef.current = buildDeviceIndex();
+            applyAutoToRowInPlace(next[rIdx], deviceIndexRef.current || undefined);
+          }
+          return next;
+        });
+      }}
+      onBlur={() => saveRows(rows)}
+      onPaste={(e) => onPaste(rIdx, c, e)}
+    />
+  </td>
+);
+
                   })}
                 </tr>
               ))}
