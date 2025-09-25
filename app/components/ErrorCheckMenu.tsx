@@ -34,6 +34,7 @@ type ResultItem = {
   상태?: string;
   기기번호?: string;
   제품?: string;
+  기종?: string;
   수취인명?: string;
   연락처1?: string;
   택배발송일?: string;
@@ -45,7 +46,7 @@ type ResultItem = {
 
 export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
   const [open, setOpen] = useState(false);
-  const [modal, setModal] = useState<null | { kind: 'device' | 'recipient' | 'unregistered'; rows: ResultItem[] }>(null);
+  const [modal, setModal] = useState<null | { kind: 'device' | 'recipient' | 'unregistered' | 'emptyDevice'; rows: ResultItem[] }>(null);
 
   const sourceRows = useMemo<Row[]>(() => {
     return (rows && Array.isArray(rows) ? rows : loadUnifiedRows()) as Row[];
@@ -57,6 +58,7 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
     상태: r['상태'] ?? '',
     기기번호: r['기기번호'] ?? '',
     제품: r['제품'] ?? '',
+    기종: r['기종'] ?? '',
     수취인명: r['수취인명'] ?? '',
     연락처1: r['연락처1'] ?? '',
     택배발송일: r['택배발송일'] ?? '',
@@ -109,22 +111,27 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
   };
 
   const runUnregisteredCheck = () => {
-    // 기기관리 rows 불러오기
-    let deviceRows: Row[] = [];
-    try {
-      const raw = localStorage.getItem('cat_rows:기기관리');
-      deviceRows = raw ? JSON.parse(raw) : [];
-    } catch {}
-    const registered = new Set(deviceRows.map(d => (d['기기번호'] ?? '').toString().trim()));
-
     const active = sourceRows.filter(r => (r['반납완료일'] ?? '') === '');
     const result = active.filter(r => {
       const dev = (r['기기번호'] ?? '').toString().trim();
-      return dev && !registered.has(dev);
+      const product = (r['제품'] ?? '').toString().trim();
+      const model = (r['기종'] ?? '').toString().trim();
+      return dev && (!product || !model);   // 기기번호는 있는데 제품/기종이 비어 있음
     }).map(r => toItem(r, r['기기번호'] ?? ''));
 
     result.sort((a, b) => (a.기기번호 ?? '').localeCompare(b.기기번호 ?? ''));
     setModal({ kind: 'unregistered', rows: result });
+    setOpen(false);
+  };
+
+  const runEmptyDeviceCheck = () => {
+    const active = sourceRows.filter(r => (r['반납완료일'] ?? '') === '');
+    const result = active.filter(r => {
+      const dev = (r['기기번호'] ?? '').toString().trim();
+      return !dev;   // 기기번호가 아예 비어 있음
+    }).map((r, idx) => toItem(r, `empty-${idx}`));
+
+    setModal({ kind: 'emptyDevice', rows: result });
     setOpen(false);
   };
 
@@ -133,13 +140,14 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
     if (modal.kind === 'device') return '기기번호 중복/오류 결과';
     if (modal.kind === 'recipient') return '수취인 중복/오류 결과';
     if (modal.kind === 'unregistered') return '미등록 기기 검사 결과';
+    if (modal.kind === 'emptyDevice') return '기기번호 미기입 검사 결과';
     return '';
   }, [modal]);
 
   const downloadCSV = () => {
     if (!modal) return;
     const BOM = '\uFEFF';
-    const headerOrder = ['거래처분류','상태','기기번호','제품','수취인명','연락처1','택배발송일','시작일','종료일','반납요청일','반납완료일'] as const;
+    const headerOrder = ['거래처분류','상태','기기번호','제품','기종','수취인명','연락처1','택배발송일','시작일','종료일','반납요청일','반납완료일'] as const;
     const header = headerOrder.join(',');
     const body = modal.rows.map(r => {
       const cells = headerOrder.map(k => {
@@ -184,9 +192,10 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
         <div className="absolute z-40 mt-2 w-[200px] bg-white border rounded shadow p-2 text-gray-900">
           <div className="text-[10px] text-gray-600 mb-1">검사 대상</div>
           <div className="flex flex-col gap-1">
-            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runDeviceCheck}>기기번호</button>
+            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runDeviceCheck}>기기번호 중복</button>
             <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runRecipientCheck}>수취인</button>
             <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runUnregisteredCheck}>미등록 기기</button>
+            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runEmptyDeviceCheck}>기기번호 미기입</button>
           </div>
         </div>
       )}
@@ -213,6 +222,7 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
                       <th className="border px-2 py-1">상태</th>
                       <th className="border px-2 py-1">기기번호</th>
                       <th className="border px-2 py-1">제품</th>
+                      <th className="border px-2 py-1">기종</th>
                       <th className="border px-2 py-1">수취인명</th>
                       <th className="border px-2 py-1">연락처1</th>
                       <th className="border px-2 py-1">택배발송일</th>
@@ -229,6 +239,7 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
                         <td className="border px-2 py-1">{r.상태}</td>
                         <td className="border px-2 py-1">{r.기기번호}</td>
                         <td className="border px-2 py-1">{r.제품}</td>
+                        <td className="border px-2 py-1">{r.기종}</td>
                         <td className="border px-2 py-1">{r.수취인명}</td>
                         <td className="border px-2 py-1">{r.연락처1}</td>
                         <td className="border px-2 py-1">{r.택배발송일}</td>
