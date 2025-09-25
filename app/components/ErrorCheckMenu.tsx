@@ -200,18 +200,25 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
     setOpen(false);
   };
 
-  /** 4) 기기번호 미기입 (기기번호가 빈 칸), 반납완료일 비어있는 것만, 공란행 제외 */
-  const runEmptyDeviceCheck = () => {
-    const active = sourceRows.filter(
-      (r) => (r['반납완료일'] ?? '') === '' && isMeaningfulRow(r)
-    );
-    const result = active
-      .filter((r) => (r['기기번호'] ?? '').toString().trim() === '')
-      .map((r, idx) => toItem(r, `EMPTY_DEVICE_${idx}`));
+ // 기기번호 미기입(빈칸) — 단, 수취인/연락처1/택배발송일 중 하나라도 있어야 유효행으로 간주
+const runEmptyDeviceCheck = () => {
+  const active = sourceRows.filter(r => (r['반납완료일'] ?? '') === '');
 
-    setModal({ kind: 'emptyDevice', rows: result, title: '기기번호 미기입 검사 결과' });
-    setOpen(false);
+  const hasAnyInfo = (r: Row) => {
+    const name = (r['수취인명'] ?? '').toString().trim();
+    const phone = (r['연락처1'] ?? '').toString().trim();
+    const ship = (r['택배발송일'] ?? '').toString().trim();
+    return !!(name || phone || ship);
   };
+
+  const result = active
+    .filter(r => ((r['기기번호'] ?? '').toString().trim() === '')) // 기기번호가 비었고
+    .filter(hasAnyInfo)                                           // 최소 하나의 구체정보가 있는 행만
+    .map(r => toItem(r, ''));                                     // key는 비워둠(미기입)
+
+  setModal({ kind: 'emptyDevice', rows: result });
+  setOpen(false);
+};
 
   /** CSV 다운로드 (BOM 포함, 열 순서 통일) */
   const downloadCSV = () => {
@@ -276,13 +283,13 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
               className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-left"
               onClick={runRecipientCheck}
             >
-              수취인 (이름+가운데번호, 조리원* 제외)
+              수취인 
             </button>
             <button
               className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-left"
               onClick={runUnregisteredCheck}
             >
-              미등록 기기 (기종/제품 공란)
+              미등록 기기 
             </button>
             <button
               className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-left"
