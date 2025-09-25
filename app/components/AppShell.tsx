@@ -75,6 +75,12 @@ export const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   "사용자 관리>권한설정": PermissionSetting,
 };
 
+// 대카테고리의 첫 소카테고리 라벨
+function getFirstSub(top: string): string | null {
+  const node = MENUS.find(m => m.label === top);
+  return node?.children?.[0]?.label ?? null;
+}
+
 // ✅ 권한 게이트: 권한 변경 브로드캐스트 수신 시 재평가
 function PermissionGate({ routeKey, children }: { routeKey: string; children: React.ReactNode }) {
   const [, force] = useState(0);            // 리렌더 트리거
@@ -112,10 +118,13 @@ function PermissionGate({ routeKey, children }: { routeKey: string; children: Re
 }
 
 export default function AppShell() {
-  // 기본 랜딩은 통합관리
+  // 기본 랜딩: 통합관리의 첫 소카테고리
   const [openTop, setOpenTop] = useState<string>("통합관리");
-  const [activeSub, setActiveSub] = useState<string | null>(null);
-  const [activeKey, setActiveKey] = useState<string>("통합관리");
+  const initialFirstSub = getFirstSub("통합관리");
+  const [activeSub, setActiveSub] = useState<string | null>(initialFirstSub);
+  const [activeKey, setActiveKey] = useState<string>(
+    initialFirstSub ? `통합관리>${initialFirstSub}` : "통합관리"
+  );
 
   const [visibleSubOf, setVisibleSubOf] = useState<string | null>(openTop);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,11 +162,13 @@ export default function AppShell() {
               >
                 <button
                   onClick={() => {
+                    // ★ 클릭한 대카테고리의 첫 소카테고리로 즉시 전환
                     setOpenTop(m.label);
-                    setActiveSub(null);
+                    const first = getFirstSub(m.label);
+                    setActiveSub(first);
+                    setActiveKey(first ? `${m.label}>${first}` : m.label);
                     if (m.children?.length) setVisibleSubOf(m.label);
                     else setVisibleSubOf(null);
-                    setActiveKey(m.label);
                   }}
                   className={`text-[0.95rem] font-semibold ${openTop === m.label ? "text-black" : "text-gray-700 hover:text-black"}`}
                 >
@@ -202,6 +213,7 @@ export default function AppShell() {
     </div>
   );
 }
+
 
 
 
