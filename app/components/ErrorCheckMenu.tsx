@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 type Row = Record<string, string>;
 const LS_UNIFIED_ROWS = 'unified_rows';
 
+/** 통합관리(로컬스토리지) 로우 로드 */
 function loadUnifiedRows(): Row[] {
   try {
     const raw = localStorage.getItem(LS_UNIFIED_ROWS);
@@ -15,6 +16,15 @@ function loadUnifiedRows(): Row[] {
   }
 }
 
+/** 완전 공백 행(모든 셀 빈 값) 제거용 */
+function isMeaningfulRow(r: Row): boolean {
+  for (const v of Object.values(r ?? {})) {
+    if ((v ?? '').toString().trim() !== '') return true;
+  }
+  return false;
+}
+
+/** 연락처 가운데 번호(4자리 우선) */
 function midBlock(phoneRaw: string): string {
   const d = (phoneRaw || '').replace(/\D+/g, '');
   const m1 = d.match(/^(\d{3})(\d{4})(\d{4})$/);
@@ -28,48 +38,62 @@ function midBlock(phoneRaw: string): string {
   return '';
 }
 
+/** 결과표의 공통 컬럼 순서(요청한 순서) */
+const HEADER_ORDER = [
+  '거래처분류',
+  '상태',
+  '기기번호',
+  '기종',
+  '제품',
+  '수취인명',
+  '연락처1',
+  '택배발송일',
+  '시작일',
+  '종료일',
+  '반납요청일',
+  '반납완료일',
+] as const;
+
 type ResultItem = {
-  key: string;
-  거래처분류?: string;
-  상태?: string;
-  기기번호?: string;
-  제품?: string;
-  기종?: string;
-  수취인명?: string;
-  연락처1?: string;
-  택배발송일?: string;
-  시작일?: string;
-  종료일?: string;
-  반납요청일?: string;
-  반납완료일?: string;
-};
+  key: string; // 그룹핑/색상 구분 키
+} & { [K in (typeof HEADER_ORDER)[number]]?: string };
+
+type ModalKind = 'device' | 'recipient' | 'unregistered' | 'emptyDevice';
 
 export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
   const [open, setOpen] = useState(false);
-  const [modal, setModal] = useState<null | { kind: 'device' | 'recipient' | 'unregistered' | 'emptyDevice'; rows: ResultItem[] }>(null);
+  const [modal, setModal] = useState<null | { kind: ModalKind; rows: ResultItem[] }>(null);
 
+  /** 결과 모달 드래그 이동용 상태 */
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ dragging: boolean; dx: number; dy: number }>({ dragging: false, dx: 0, dy: 0 });
+
+  /** 소스 데이터(완전 빈 행 제거) */
   const sourceRows = useMemo<Row[]>(() => {
-    return (rows && Array.isArray(rows) ? rows : loadUnifiedRows()) as Row[];
+    const base = (rows && Array.isArray(rows) ? rows : loadUnifiedRows()) as Row[];
+    return base.filter(isMeaningfulRow);
   }, [rows]);
 
+  /** 공통: Row → ResultItem */
   const toItem = (r: Row, key: string): ResultItem => ({
     key,
-    거래처분류: r['거래처분류'] ?? '',
-    상태: r['상태'] ?? '',
-    기기번호: r['기기번호'] ?? '',
-    제품: r['제품'] ?? '',
-    기종: r['기종'] ?? '',
-    수취인명: r['수취인명'] ?? '',
-    연락처1: r['연락처1'] ?? '',
-    택배발송일: r['택배발송일'] ?? '',
-    시작일: r['시작일'] ?? '',
-    종료일: r['종료일'] ?? '',
-    반납요청일: r['반납요청일'] ?? '',
-    반납완료일: r['반납완료일'] ?? '',
+    거래처분류: (r['거래처분류'] ?? '').toString(),
+    상태: (r['상태'] ?? '').toString(),
+    기기번호: (r['기기번호'] ?? '').toString(),
+    기종: (r['기종'] ?? '').toString(),
+    제품: (r['제품'] ?? '').toString(),
+    수취인명: (r['수취인명'] ?? '').toString(),
+    연락처1: (r['연락처1'] ?? '').toString(),
+    택배발송일: (r['택배발송일'] ?? '').toString(),
+    시작일: (r['시작일'] ?? '').toString(),
+    종료일: (r['종료일'] ?? '').toString(),
+    반납요청일: (r['반납요청일'] ?? '').toString(),
+    반납완료일: (r['반납완료일'] ?? '').toString(),
   });
 
+  /** 1) 기기번호 중복(반납완료일 비어있는 행 대상) */
   const runDeviceCheck = () => {
-    const active = sourceRows.filter(r => (r['반납완료일'] ?? '') === '');
+    const active = sourceRows.filter(r => (r['반납완료일'] ?? '').toString().trim() === '');
     const byDevice = new Map<string, ResultItem[]>();
     for (const r of active) {
       const key = (r['기기번호'] ?? '').toString().trim();
@@ -83,14 +107,15 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
     dupRows.sort((a, b) => (a.기기번호 ?? '').localeCompare(b.기기번호 ?? ''));
     setModal({ kind: 'device', rows: dupRows });
     setOpen(false);
+    centerModal();
   };
 
+  /** 2) 수취인(이름+가운데번호), '조리원'으로 시작하는 거래처분류는 제외, 반납완료일 빈 것만 */
   const runRecipientCheck = () => {
     const active = sourceRows.filter(r => {
-      if ((r['반납완료일'] ?? '') !== '') return false;
-      const vendor = (r['거래처분류'] ?? '').toString();
-      if (vendor.startsWith('조리원')) return false; // ⬅️ 조리원 제외
-      return true;
+      const vendor = (r['거래처분류'] ?? '').toString().trim();
+      const excludeJoriwon = vendor.startsWith('조리원');
+      return !excludeJoriwon && (r['반납완료일'] ?? '').toString().trim() === '';
     });
 
     const byPerson = new Map<string, ResultItem[]>();
@@ -108,49 +133,56 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
     dupRows.sort((a, b) => (a.key ?? '').localeCompare(b.key ?? ''));
     setModal({ kind: 'recipient', rows: dupRows });
     setOpen(false);
+    centerModal();
   };
 
+  /** 3) 미등록 기기: 통합관리에서 '기기번호는 있음' && '기종/제품이 모두 빈칸' */
   const runUnregisteredCheck = () => {
-    const active = sourceRows.filter(r => (r['반납완료일'] ?? '') === '');
-    const result = active.filter(r => {
-      const dev = (r['기기번호'] ?? '').toString().trim();
-      const product = (r['제품'] ?? '').toString().trim();
-      const model = (r['기종'] ?? '').toString().trim();
-      return dev && (!product || !model);   // 기기번호는 있는데 제품/기종이 비어 있음
-    }).map(r => toItem(r, r['기기번호'] ?? ''));
+    const result = sourceRows
+      .filter(r => {
+        const dev = (r['기기번호'] ?? '').toString().trim();
+        const model = (r['기종'] ?? '').toString().trim();
+        const prod = (r['제품'] ?? '').toString().trim();
+        return !!dev && model === '' && prod === '';
+      })
+      .map(r => toItem(r, (r['기기번호'] ?? '').toString().trim()));
 
     result.sort((a, b) => (a.기기번호 ?? '').localeCompare(b.기기번호 ?? ''));
     setModal({ kind: 'unregistered', rows: result });
     setOpen(false);
+    centerModal();
   };
 
-  const runEmptyDeviceCheck = () => {
-    const active = sourceRows.filter(r => (r['반납완료일'] ?? '') === '');
-    const result = active.filter(r => {
-      const dev = (r['기기번호'] ?? '').toString().trim();
-      return !dev;   // 기기번호가 아예 비어 있음
-    }).map((r, idx) => toItem(r, `empty-${idx}`));
+  /** 4) 기기번호 미기입: 의미 있는 행 중 기기번호가 빈칸 */
+  const runEmptyDeviceNoCheck = () => {
+    const result = sourceRows
+      .filter(r => (r['기기번호'] ?? '').toString().trim() === '')
+      .map((r, idx) => toItem(r, `(empty)#${idx}`)); // 키는 구분용
 
+    // 완전 빈 행 이미 제거했으므로 빈 줄이 대량으로 보일 일이 없음
     setModal({ kind: 'emptyDevice', rows: result });
     setOpen(false);
+    centerModal();
   };
 
+  /** 모달 타이틀 */
   const title = useMemo(() => {
     if (!modal) return '';
-    if (modal.kind === 'device') return '기기번호 중복/오류 결과';
-    if (modal.kind === 'recipient') return '수취인 중복/오류 결과';
-    if (modal.kind === 'unregistered') return '미등록 기기 검사 결과';
-    if (modal.kind === 'emptyDevice') return '기기번호 미기입 검사 결과';
-    return '';
+    switch (modal.kind) {
+      case 'device': return '기기번호 중복 검사 결과';
+      case 'recipient': return '수취인(이름+가운데번호) 중복 검사 결과';
+      case 'unregistered': return '미등록 기기 검사 결과 (기종/제품 모두 빈칸)';
+      case 'emptyDevice': return '기기번호 미기입 검사 결과';
+    }
   }, [modal]);
 
+  /** CSV 다운로드 (4종 공통 순서로 출력) */
   const downloadCSV = () => {
     if (!modal) return;
     const BOM = '\uFEFF';
-    const headerOrder = ['거래처분류','상태','기기번호','제품','기종','수취인명','연락처1','택배발송일','시작일','종료일','반납요청일','반납완료일'] as const;
-    const header = headerOrder.join(',');
+    const header = HEADER_ORDER.join(',');
     const body = modal.rows.map(r => {
-      const cells = headerOrder.map(k => {
+      const cells = HEADER_ORDER.map(k => {
         const s = (r[k] ?? '').toString().replace(/"/g, '""');
         return /[",\n]/.test(s) ? `"${s}"` : s;
       }).join(',');
@@ -165,8 +197,9 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
     document.body.removeChild(a); URL.revokeObjectURL(url);
   };
 
+  /** 같은 그룹(같은 key) 배경색 고정 팔레트 */
   const colorForKey = (() => {
-    const palette = ['#FFF7AE', '#E5E7EB', '#D1FAE5'];
+    const palette = ['#FFF7AE', '#E5E7EB', '#D1FAE5']; // 노랑/그레이/연초록 반복
     const map = new Map<string, string>();
     let i = 0;
     return (key: string) => {
@@ -177,6 +210,40 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
       return map.get(key)!;
     };
   })();
+
+  /** 모달 중앙 정렬 기본값 */
+  function centerModal() {
+    const w = 1100; // 모달 폭
+    const x = Math.max(8, Math.round((window.innerWidth - w) / 2));
+    const y = 60;
+    setPos({ x, y });
+  }
+
+  /** 드래그 핸들러 */
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!dragRef.current.dragging) return;
+      setPos(p => {
+        if (!p) return p;
+        const nx = e.clientX - dragRef.current.dx;
+        const ny = e.clientY - dragRef.current.dy;
+        // 화면 밖으로 못 나가게 약간의 여백
+        const maxX = window.innerWidth - 24;
+        const maxY = window.innerHeight - 24;
+        return {
+          x: Math.min(Math.max(nx, 8), maxX),
+          y: Math.min(Math.max(ny, 8), maxY),
+        };
+      });
+    }
+    function onUp() { dragRef.current.dragging = false; }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
 
   return (
     <div className="relative">
@@ -189,28 +256,57 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
       </button>
 
       {open && (
-        <div className="absolute z-40 mt-2 w-[200px] bg-white border rounded shadow p-2 text-gray-900">
+        <div className="absolute z-40 mt-2 w-[220px] bg-white border rounded shadow p-2 text-gray-900">
           <div className="text-[10px] text-gray-600 mb-1">검사 대상</div>
-          <div className="flex flex-col gap-1">
-            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runDeviceCheck}>기기번호 중복</button>
-            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runRecipientCheck}>수취인</button>
-            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runUnregisteredCheck}>미등록 기기</button>
-            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-center" onClick={runEmptyDeviceCheck}>기기번호 미기입</button>
+          <div className="flex flex-col gap-2">
+            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-left" onClick={runDeviceCheck}>
+              기기번호 중복
+            </button>
+            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-left" onClick={runRecipientCheck}>
+              수취인
+            </button>
+            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-left" onClick={runUnregisteredCheck}>
+              미등록 기기
+            </button>
+            <button className="px-2 py-1 text-[10px] border rounded hover:bg-gray-50 text-left" onClick={runEmptyDeviceNoCheck}>
+              기기번호 미기입
+            </button>
           </div>
         </div>
       )}
 
-      {modal && (
-        <div className="fixed inset-0 z-40 bg-black/30 flex items-center justify-center" onClick={()=>setModal(null)}>
-          <div className="bg-white w-[1100px] max-w-[95vw] rounded shadow" onClick={(e)=>e.stopPropagation()}>
-            <div className="px-4 py-3 border-b font-semibold text-gray-900 flex items-center justify-between">
+      {modal && pos && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30"
+          onClick={() => setModal(null)}
+        >
+          <div
+            className="bg-white w-[1100px] max-w-[95vw] rounded shadow select-none"
+            style={{ position: 'fixed', left: pos.x, top: pos.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 드래그 가능한 헤더 */}
+            <div
+              className="px-4 py-3 border-b font-semibold text-gray-900 flex items-center justify-between cursor-move"
+              onMouseDown={(e) => {
+                dragRef.current.dragging = true;
+                const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                dragRef.current.dx = e.clientX - rect.left;
+                dragRef.current.dy = e.clientY - rect.top;
+              }}
+            >
               <span>{title}</span>
-              <div className="flex gap-2">
-                <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={downloadCSV}>CSV</button>
-                <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={()=>setModal(null)}>닫기</button>
+              <div className="flex gap-2 cursor-default">
+                <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={downloadCSV}>
+                  CSV
+                </button>
+                <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50" onClick={() => setModal(null)}>
+                  닫기
+                </button>
               </div>
             </div>
 
+            {/* 결과 표 */}
             <div className="p-3 max-h-[70vh] overflow-auto text-[0.74rem] text-gray-900">
               {modal.rows.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">문제 없음</div>
@@ -218,35 +314,19 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
                 <table className="w-full border-collapse">
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
-                      <th className="border px-2 py-1">거래처분류</th>
-                      <th className="border px-2 py-1">상태</th>
-                      <th className="border px-2 py-1">기기번호</th>
-                      <th className="border px-2 py-1">제품</th>
-                      <th className="border px-2 py-1">기종</th>
-                      <th className="border px-2 py-1">수취인명</th>
-                      <th className="border px-2 py-1">연락처1</th>
-                      <th className="border px-2 py-1">택배발송일</th>
-                      <th className="border px-2 py-1">시작일</th>
-                      <th className="border px-2 py-1">종료일</th>
-                      <th className="border px-2 py-1">반납요청일</th>
-                      <th className="border px-2 py-1">반납완료일</th>
+                      {HEADER_ORDER.map(h => (
+                        <th key={h} className="border px-2 py-1">{h}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {modal.rows.map((r, i) => (
                       <tr key={i} style={{ background: colorForKey(r.key) }}>
-                        <td className="border px-2 py-1">{r.거래처분류}</td>
-                        <td className="border px-2 py-1">{r.상태}</td>
-                        <td className="border px-2 py-1">{r.기기번호}</td>
-                        <td className="border px-2 py-1">{r.제품}</td>
-                        <td className="border px-2 py-1">{r.기종}</td>
-                        <td className="border px-2 py-1">{r.수취인명}</td>
-                        <td className="border px-2 py-1">{r.연락처1}</td>
-                        <td className="border px-2 py-1">{r.택배발송일}</td>
-                        <td className="border px-2 py-1">{r.시작일}</td>
-                        <td className="border px-2 py-1">{r.종료일}</td>
-                        <td className="border px-2 py-1">{r.반납요청일}</td>
-                        <td className="border px-2 py-1">{r.반납완료일}</td>
+                        {HEADER_ORDER.map(h => (
+                          <td key={h} className="border px-2 py-1">
+                            {(r[h] ?? '')}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
@@ -259,5 +339,6 @@ export default function ErrorCheckMenu({ rows }: { rows?: Row[] }) {
     </div>
   );
 }
+
 
 
