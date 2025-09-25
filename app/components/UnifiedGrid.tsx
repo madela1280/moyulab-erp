@@ -759,7 +759,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
               })}
             </colgroup>
 
-            <thead className="bg-gray-100 sticky top-0 z-10 text-gray-900">
+            <thead className="bg-gray-200 sticky top-0 z-10 text-gray-900">
               <tr>
                 <th className="border px-2 py-[0.28rem] w-[28px] min-w-[28px] max-w-[28px] text-center">✔</th>
 
