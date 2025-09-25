@@ -837,7 +837,25 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
                   </td>
 
                   {colsRender.map((c, ci) => {
-                    const val = row[c] ?? '';
+  // 기존 값
+  const rawVal = row[c] ?? '';
+
+  // 핵심 필드(수취인명/연락처1/계약자주소)가 비어 있으면 총연장횟수의 '0회'는 표시만 숨김
+  const val =
+    c === '총연장횟수'
+      ? (() => {
+          const name = (row['수취인명'] ?? '').toString().trim();
+          const phone = (row['연락처1'] ?? '').toString().trim();
+          const addr = (row['계약자주소'] ?? '').toString().trim();
+          const v = (rawVal ?? '').toString();
+
+          // 핵심 정보가 하나라도 비어 있고, 값이 비었거나 '0회'라면 화면 표시만 공란으로
+          if ((!name || !phone || !addr) && (v === '' || v === '0회')) {
+            return '';
+          }
+          return v;
+        })()
+      : rawVal;
 
                     const handleCellClick = () => {
                       if (isExtCol(c)) openExt(rIdx, c);
