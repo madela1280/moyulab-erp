@@ -1,28 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
+import fs from "fs/promises";
+import path from "path";
 
-// GET /api/customer?phone=01012345678
+// 숫자만 남기기 (010-1234-5678 -> 01012345678)
+const onlyDigits = (s: string) => s.replace(/\D/g, "");
+
+type Customer = {
+  phone: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+};
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const phone = searchParams.get("phone");
 
   if (!phone) {
-    return NextResponse.json(
-      { error: "전화번호가 필요합니다." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "전화번호가 필요합니다." }, { status: 400 });
   }
 
-  // 🔹 지금은 테스트용 더미 데이터
-  const dummy = {
-    phone: "01012345678",
-    name: "홍길동",
-    startDate: "2025-09-01",
-    endDate: "2025-10-01",
-  };
+  const input = onlyDigits(phone);
 
-  if (phone === dummy.phone) {
-    return NextResponse.json(dummy);
-  } else {
+  // public/data/customers.json 읽기
+  const filePath = path.join(process.cwd(), "public", "data", "customers.json");
+  let raw = "[]";
+  try {
+    raw = await fs.readFile(filePath, "utf-8");
+  } catch {
+    return NextResponse.json({ error: "데이터 파일을 찾을 수 없습니다." }, { status: 500 });
+  }
+
+  let list: Customer[] = [];
+  try {
+    list = JSON.parse(raw);
+  } catch {
+    return NextResponse.json({ error: "데이터 파싱 오류" }, { status: 500 });
+  }
+
+  // 전화번호 숫자만 비교 (정확 일치)
+  const found = list.find((c) => onlyDigits(c.phone) === input);
+
+  if (!found) {
     return NextResponse.json({ error: "고객 정보를 찾을 수 없습니다." }, { status: 404 });
   }
+
+  return NextResponse.json(found);
 }
+
