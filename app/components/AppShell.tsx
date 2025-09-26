@@ -24,6 +24,9 @@ import LockScreen from './UserManagement/LockScreen';
 
 import { canRead, getCurrentUser, ADMIN_ONLY_KEYS, isAdmin } from '@/app/lib/permissions';
 
+// 내용 없는 경우 비어 있는 뷰
+const EmptyView = () => null; // 완전 빈 화면 (원하면 안내문으로 바꿔도 됨)
+
 type MenuNode = { label: string; children?: MenuNode[] };
 
 export const MENUS: MenuNode[] = [
