@@ -43,3 +43,9 @@ node_modules/
 .next/
 .turbo/
 dist/
+node_modules/
+.next/
+.env*
+*.log
+venv/
+../rent-label-api-client/venv/
