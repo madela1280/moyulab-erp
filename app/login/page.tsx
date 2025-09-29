@@ -35,32 +35,62 @@ export default function LoginPage() {
     } catch {}
   }, []);
 
+   const handleLogin = async () => {
+    if (!userId || !password) { alert('아이디와 비밀번호를 입력하세요.'); return; }
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ username: userId.trim(), password })
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+        return;
+      }
+
+      // 성공 → 세션 저장(기존 로직 유지)
+      if (rememberId) localStorage.setItem('erp_user', userId.trim());
+      else localStorage.removeItem('erp_user');
+
+      sessionStorage.setItem('erp_auth', '1');
+      sessionStorage.setItem('erp_user', userId.trim());
+      sessionStorage.setItem('erp_role', json.role ?? 'user');
+
+      router.replace('/');
+    } catch {
+      alert('로그인 서버 오류');
+    }
+  };
   const handleLogin = async () => {
     if (!userId || !password) { alert('아이디와 비밀번호를 입력하세요.'); return; }
 
-    // 1) 일반 사용자 목록에서 찾기 (로컬 저장된 사용자)
     try {
-      const raw = localStorage.getItem('erp_users');
-      const list: UserRow[] = raw ? JSON.parse(raw) : [];
-
-      const found = list.find(u => u.username === userId.trim());
-      if (found) {
-        const tryHash = await sha256(`${found.pwSalt}|${password}`);
-        if (tryHash !== found.pwHash) { alert('아이디 또는 비밀번호가 올바르지 않습니다.'); return; }
-
-        // 로그인 성공 (일반 사용자)
-        if (rememberId) localStorage.setItem('erp_user', userId.trim());
-        else localStorage.removeItem('erp_user');
-
-        sessionStorage.setItem('erp_auth', '1');
-        sessionStorage.setItem('erp_user', userId.trim());
-        sessionStorage.setItem('erp_role', 'user');
-        router.replace('/');
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ username: userId.trim(), password })
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        alert('아이디 또는 비밀번호가 올바르지 않습니다.');
         return;
       }
+
+      // 성공 → 세션 저장(기존 로직 유지)
+      if (rememberId) localStorage.setItem('erp_user', userId.trim());
+      else localStorage.removeItem('erp_user');
+
+      sessionStorage.setItem('erp_auth', '1');
+      sessionStorage.setItem('erp_user', userId.trim());
+      sessionStorage.setItem('erp_role', json.role ?? 'user');
+
+      router.replace('/');
     } catch {
-      // 무시하고 관리자 체크로 진행
+      alert('로그인 서버 오류');
     }
+  };
 
     // 2) 관리자(고정 ID) 체크
     if (userId.trim() === ADMIN_ID_FIXED) {
