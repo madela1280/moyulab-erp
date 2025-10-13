@@ -19,7 +19,7 @@ function readJSON(p: string, fallback: any) {
 }
 
 async function tryDbLogin(username: string, password: string) {
-  // DATABASE_URL 없거나 DB 죽어있으면 여기서 에러 던져짐 → 호출측에서 fallback
+  // DB에 저장된 계정 확인
   const sql =
     "SELECT username, password_hash, salt, role, COALESCE(name,'') AS name, COALESCE(phone,'') AS phone FROM users WHERE username=$1";
   const r = await query(sql, [username]);
@@ -105,7 +105,9 @@ export async function POST(req: Request) {
       }
       // DB 연결은 됐는데 사용자/비번 불일치
       return NextResponse.json({ ok: false, error: dbRes.code }, { status: 403 });
-    } catch {
+    } catch (err) {
+      console.error("DB login error:", err);
+
       // 2) DB 미설정/죽음 → ENV 관리자 fallback
       const envRes = tryEnvAdminLogin(body.username, body.password);
       if (envRes?.ok) {
@@ -137,6 +139,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'server' }, { status: 500 });
   }
 }
+
 
 
 
