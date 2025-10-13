@@ -129,6 +129,6 @@ if (envAdminId && envSalt && envHash) {
     console.error(e);
     return NextResponse.json({ ok: false, error: 'server' }, { status: 500 });
   }
-}
+
 
 
