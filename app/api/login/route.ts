@@ -71,22 +71,27 @@ function tryFileLogin(root: string, username: string, password: string) {
     return { ok: true as const, role: u.role ?? 'user', username: u.username, name: u.name ?? '', phone: u.phone ?? '' };
   }
 
-  // 2) 관리자 계정 확인 (환경변수 → DB 우선)
-const envAdminId = process.env.ADMIN_ID;
-const envSalt = process.env.ADMIN_SALT;
-const envHash = process.env.ADMIN_HASH;
+  // admin.json fallback
+  const adminPath = path.resolve(root, 'admin.json');
+  const admin = readJSON(adminPath, null);
+  if (!admin) return { ok: false, code: 'invalid_user' as const };
 
-if (envAdminId && envSalt && envHash) {
-  if (body.username === envAdminId) {
-    const tryHash = sha256(`${envSalt}|${body.password}`);
-    if (tryHash !== envHash) {
-      return NextResponse.json({ ok: false, error: 'invalid_password' }, { status: 403 });
-    }
-    return NextResponse.json({ ok: true, role: 'admin', username: envAdminId });
-  }
+  const adminUser = admin.username ?? 'admin';
+  if (username !== adminUser) return { ok: false, code: 'invalid_user' as const };
+  const tryHash = sha256(`${admin.pwSalt}|${password}`);
+  if (tryHash !== admin.pwHash) return { ok: false, code: 'invalid_password' as const };
+
+  return { ok: true as const, role: 'admin', username: adminUser, name: '', phone: '' };
 }
 
-    // 1) 먼저 DB 시도
+export async function POST(req: Request) {
+  try {
+    const body = (await req.json()) as ReqBody;
+    if (!body?.username || !body?.password) {
+      return NextResponse.json({ ok: false, error: 'missing' }, { status: 400 });
+    }
+
+    // 1) 먼저 DB 로그인 시도
     try {
       const dbRes = await tryDbLogin(body.username, body.password);
       if (dbRes.ok) {
@@ -98,7 +103,7 @@ if (envAdminId && envSalt && envHash) {
           phone: dbRes.phone,
         });
       }
-      // DB 연결은 됐는데 사용자/비번 불일치면 그대로 에러 리턴
+      // DB 연결은 됐는데 사용자/비번 불일치
       return NextResponse.json({ ok: false, error: dbRes.code }, { status: 403 });
     } catch {
       // 2) DB 미설정/죽음 → ENV 관리자 fallback
@@ -112,6 +117,7 @@ if (envAdminId && envSalt && envHash) {
           phone: envRes.phone,
         });
       }
+
       // 3) 파일(users.json/admin.json) fallback
       const fileRes = tryFileLogin(process.cwd(), body.username, body.password);
       if (fileRes.ok) {
@@ -123,12 +129,14 @@ if (envAdminId && envSalt && envHash) {
           phone: fileRes.phone,
         });
       }
+
       return NextResponse.json({ ok: false, error: fileRes.code }, { status: 403 });
     }
   } catch (e) {
     console.error(e);
     return NextResponse.json({ ok: false, error: 'server' }, { status: 500 });
   }
+}
 
 
 
