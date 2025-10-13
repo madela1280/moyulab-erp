@@ -71,25 +71,20 @@ function tryFileLogin(root: string, username: string, password: string) {
     return { ok: true as const, role: u.role ?? 'user', username: u.username, name: u.name ?? '', phone: u.phone ?? '' };
   }
 
-  // admin.json fallback
-  const adminPath = path.resolve(root, 'admin.json');
-  const admin = readJSON(adminPath, null);
-  if (!admin) return { ok: false, code: 'invalid_user' as const };
+  // 2) 관리자 계정 확인 (환경변수 → DB 우선)
+const envAdminId = process.env.ADMIN_ID;
+const envSalt = process.env.ADMIN_SALT;
+const envHash = process.env.ADMIN_HASH;
 
-  const adminUser = admin.username ?? 'admin';
-  if (username !== adminUser) return { ok: false, code: 'invalid_user' as const };
-  const tryHash = sha256(`${admin.pwSalt}|${password}`);
-  if (tryHash !== admin.pwHash) return { ok: false, code: 'invalid_password' as const };
-
-  return { ok: true as const, role: 'admin', username: adminUser, name: '', phone: '' };
-}
-
-export async function POST(req: Request) {
-  try {
-    const body = (await req.json()) as ReqBody;
-    if (!body?.username || !body?.password) {
-      return NextResponse.json({ ok: false, error: 'missing' }, { status: 400 });
+if (envAdminId && envSalt && envHash) {
+  if (body.username === envAdminId) {
+    const tryHash = sha256(`${envSalt}|${body.password}`);
+    if (tryHash !== envHash) {
+      return NextResponse.json({ ok: false, error: 'invalid_password' }, { status: 403 });
     }
+    return NextResponse.json({ ok: true, role: 'admin', username: envAdminId });
+  }
+}
 
     // 1) 먼저 DB 시도
     try {
