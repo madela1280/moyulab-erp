@@ -57,11 +57,7 @@ export default function LoginPage() {
       sessionStorage.setItem('erp_user', data.username);
       sessionStorage.setItem('erp_role', data.role);
 
-      if (data.role === 'admin') {
-        router.replace('/admin');   // 관리자 → 관리자 설정 페이지
-      } else {
-        router.replace('/');        // 일반 사용자 → 메인 페이지
-      }
+      router.replace('/');            
 
     } catch (e) {
       alert('서버와 통신할 수 없습니다.');
