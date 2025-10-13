@@ -18,24 +18,60 @@ function readJSON(p: string, fallback: any) {
   return fallback;
 }
 
-async function tryDbLogin(username: string, password: string) {
-  // DB에 저장된 계정 확인
-  const sql =
-    "SELECT username, password_hash, salt, role, COALESCE(name,'') AS name, COALESCE(phone,'') AS phone FROM users WHERE username=$1";
+/**
+ * DB 로그인:
+ * - 우선순위 1) password_hash + salt 검증 (신규 방식)
+ * - 우선순위 2) password(평문/레거시) 일치 검증 (기존 사용자 호환)
+ * - 역할/프로필 기본값 안전 처리
+ */
+async function tryDbLogin(username: string, rawPassword: string) {
+  const sql = `
+    SELECT
+      username,
+      password       AS legacy_password,
+      password_hash,
+      salt,
+      COALESCE(role,'user')   AS role,
+      COALESCE(name,'')       AS name,
+      COALESCE(phone,'')      AS phone
+    FROM users
+    WHERE username = $1
+    LIMIT 1
+  `;
   const r = await query(sql, [username]);
-  if (r.rows.length === 0) return { ok: false, code: 'invalid_user' };
+  if (r.rows.length === 0) return { ok: false, code: 'invalid_user' as const };
 
-  const u = r.rows[0];
-  const tryHash = sha256(`${u.salt}|${password}`);
-  if (tryHash !== u.password_hash) return { ok: false, code: 'invalid_password' };
-
-  return {
-    ok: true as const,
-    role: (u.role as string) || 'user',
-    username: u.username as string,
-    name: u.name as string,
-    phone: u.phone as string,
+  const u = r.rows[0] as {
+    username: string;
+    legacy_password: string | null;
+    password_hash: string | null;
+    salt: string | null;
+    role: string;
+    name: string;
+    phone: string;
   };
+
+  // 1) 해시+솔트가 있으면 그걸 우선 검증
+  if (u.password_hash && u.salt) {
+    const tryHash = sha256(`${u.salt}|${rawPassword}`);
+    if (tryHash === u.password_hash) {
+      return { ok: true as const, role: u.role, username: u.username, name: u.name, phone: u.phone };
+    } else {
+      return { ok: false as const, code: 'invalid_password' as const };
+    }
+  }
+
+  // 2) 레거시(평문) 비밀번호 컬럼이 있으면 호환 검증
+  if (u.legacy_password != null) {
+    if (u.legacy_password === rawPassword) {
+      return { ok: true as const, role: u.role, username: u.username, name: u.name, phone: u.phone };
+    } else {
+      return { ok: false as const, code: 'invalid_password' as const };
+    }
+  }
+
+  // 어떤 형태도 없으면 비번 불일치 처리
+  return { ok: false as const, code: 'invalid_password' as const };
 }
 
 function tryEnvAdminLogin(username: string, password: string) {
@@ -43,7 +79,7 @@ function tryEnvAdminLogin(username: string, password: string) {
   const ADMIN_SALT = process.env.ADMIN_SALT;
   const ADMIN_HASH = process.env.ADMIN_HASH;
 
-  if (!ADMIN_SALT || !ADMIN_HASH) return null; // ENV 미설정 → 다음 fallback으로
+  if (!ADMIN_SALT || !ADMIN_HASH) return null; // ENV 미설정 → 다음 fallback
 
   if (username !== ADMIN_ID) return { ok: false, code: 'invalid_user' as const };
   const tryHash = sha256(`${ADMIN_SALT}|${password}`);
@@ -91,7 +127,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'missing' }, { status: 400 });
     }
 
-    // 1) 먼저 DB 로그인 시도
+    // 1) DB 로그인 시도 (신규 해시/솔트 우선, 없으면 레거시 password 호환)
     try {
       const dbRes = await tryDbLogin(body.username, body.password);
       if (dbRes.ok) {
@@ -103,12 +139,12 @@ export async function POST(req: Request) {
           phone: dbRes.phone,
         });
       }
-      // DB 연결은 됐는데 사용자/비번 불일치
+      // DB 연결 OK였지만 사용자/비번 불일치
       return NextResponse.json({ ok: false, error: dbRes.code }, { status: 403 });
     } catch (err) {
-      console.error("DB login error:", err);
+      console.error('DB login error:', err);
 
-      // 2) DB 미설정/죽음 → ENV 관리자 fallback
+      // 2) DB 미설정/장애 시: ENV 관리자
       const envRes = tryEnvAdminLogin(body.username, body.password);
       if (envRes?.ok) {
         return NextResponse.json({
@@ -139,6 +175,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'server' }, { status: 500 });
   }
 }
+
 
 
 
