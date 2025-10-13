@@ -20,9 +20,9 @@ function readJSON(p: string, fallback: any) {
 
 /**
  * DB 로그인:
- * - 우선순위 1) password_hash + salt 검증 (신규 방식)
- * - 우선순위 2) password(평문/레거시) 일치 검증 (기존 사용자 호환)
- * - 역할/프로필 기본값 안전 처리
+ * - 우선 1) password_hash + salt 검증 (신규 방식)
+ * - 우선 2) password(레거시 평문) 검증 (기존 사용자 호환)
+ * - 어떤 쪽도 맞지 않으면 {ok:false}
  */
 async function tryDbLogin(username: string, rawPassword: string) {
   const sql = `
@@ -51,26 +51,20 @@ async function tryDbLogin(username: string, rawPassword: string) {
     phone: string;
   };
 
-  // 1) 해시+솔트가 있으면 그걸 우선 검증
+  // 1) 해시+솔트 우선
   if (u.password_hash && u.salt) {
     const tryHash = sha256(`${u.salt}|${rawPassword}`);
     if (tryHash === u.password_hash) {
       return { ok: true as const, role: u.role, username: u.username, name: u.name, phone: u.phone };
-    } else {
-      return { ok: false as const, code: 'invalid_password' as const };
     }
-  }
-
-  // 2) 레거시(평문) 비밀번호 컬럼이 있으면 호환 검증
-  if (u.legacy_password != null) {
+    // 해시 불일치면 DB 실패로 간주(아래에서 다른 경로로 계속 시도)
+  } else if (u.legacy_password != null) {
+    // 2) 레거시 평문
     if (u.legacy_password === rawPassword) {
       return { ok: true as const, role: u.role, username: u.username, name: u.name, phone: u.phone };
-    } else {
-      return { ok: false as const, code: 'invalid_password' as const };
     }
   }
 
-  // 어떤 형태도 없으면 비번 불일치 처리
   return { ok: false as const, code: 'invalid_password' as const };
 }
 
@@ -79,7 +73,7 @@ function tryEnvAdminLogin(username: string, password: string) {
   const ADMIN_SALT = process.env.ADMIN_SALT;
   const ADMIN_HASH = process.env.ADMIN_HASH;
 
-  if (!ADMIN_SALT || !ADMIN_HASH) return null; // ENV 미설정 → 다음 fallback
+  if (!ADMIN_SALT || !ADMIN_HASH) return null;
 
   if (username !== ADMIN_ID) return { ok: false, code: 'invalid_user' as const };
   const tryHash = sha256(`${ADMIN_SALT}|${password}`);
@@ -89,7 +83,6 @@ function tryEnvAdminLogin(username: string, password: string) {
 }
 
 function tryFileLogin(root: string, username: string, password: string) {
-  // users.json 우선
   const usersPath = path.resolve(root, 'users.json');
   const users: Array<{
     username: string;
@@ -107,7 +100,6 @@ function tryFileLogin(root: string, username: string, password: string) {
     return { ok: true as const, role: u.role ?? 'user', username: u.username, name: u.name ?? '', phone: u.phone ?? '' };
   }
 
-  // admin.json fallback
   const adminPath = path.resolve(root, 'admin.json');
   const admin = readJSON(adminPath, null);
   if (!admin) return { ok: false, code: 'invalid_user' as const };
@@ -127,7 +119,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'missing' }, { status: 400 });
     }
 
-    // 1) DB 로그인 시도 (신규 해시/솔트 우선, 없으면 레거시 password 호환)
+    // 1) DB 시도 (성공 시 즉시 반환, 실패여도 "중단하지 않고" 다음 경로 시도)
     try {
       const dbRes = await tryDbLogin(body.username, body.password);
       if (dbRes.ok) {
@@ -139,42 +131,44 @@ export async function POST(req: Request) {
           phone: dbRes.phone,
         });
       }
-      // DB 연결 OK였지만 사용자/비번 불일치
-      return NextResponse.json({ ok: false, error: dbRes.code }, { status: 403 });
+      // 여기서 바로 403 내리지 않고, 아래 ENV/파일 경로 계속 시도 (중요)
     } catch (err) {
+      // DB 자체 연결 실패 시에도 아래 경로 계속 시도
       console.error('DB login error:', err);
-
-      // 2) DB 미설정/장애 시: ENV 관리자
-      const envRes = tryEnvAdminLogin(body.username, body.password);
-      if (envRes?.ok) {
-        return NextResponse.json({
-          ok: true,
-          role: envRes.role,
-          username: envRes.username,
-          name: envRes.name,
-          phone: envRes.phone,
-        });
-      }
-
-      // 3) 파일(users.json/admin.json) fallback
-      const fileRes = tryFileLogin(process.cwd(), body.username, body.password);
-      if (fileRes.ok) {
-        return NextResponse.json({
-          ok: true,
-          role: fileRes.role,
-          username: fileRes.username,
-          name: fileRes.name,
-          phone: fileRes.phone,
-        });
-      }
-
-      return NextResponse.json({ ok: false, error: fileRes.code }, { status: 403 });
     }
+
+    // 2) ENV 관리자
+    const envRes = tryEnvAdminLogin(body.username, body.password);
+    if (envRes?.ok) {
+      return NextResponse.json({
+        ok: true,
+        role: envRes.role,
+        username: envRes.username,
+        name: envRes.name,
+        phone: envRes.phone,
+      });
+    }
+
+    // 3) 파일(users.json/admin.json)
+    const fileRes = tryFileLogin(process.cwd(), body.username, body.password);
+    if (fileRes.ok) {
+      return NextResponse.json({
+        ok: true,
+        role: fileRes.role,
+        username: fileRes.username,
+        name: fileRes.name,
+        phone: fileRes.phone,
+      });
+    }
+
+    // 모두 실패
+    return NextResponse.json({ ok: false, error: fileRes.code ?? envRes?.code ?? 'invalid' }, { status: 403 });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ ok: false, error: 'server' }, { status: 500 });
   }
 }
+
 
 
 
