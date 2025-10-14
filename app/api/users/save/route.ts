@@ -5,9 +5,8 @@ import { query } from "@/app/lib/db";
 
 type ReqBody = { username: string; password: string; role?: string; name?: string; phone?: string };
 
-function sha256(s: string) {
-  return crypto.createHash("sha256").update(s).digest("hex");
-}
+// 규칙 유지: SHA-256( salt + '|' + password )
+const sha256 = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
 
 export async function POST(req: Request) {
   try {
@@ -21,7 +20,7 @@ export async function POST(req: Request) {
 
     await query(
       `INSERT INTO users (username, password, role, name, phone, password_hash, salt)
-       VALUES ($1, '__legacy__', $2, $3, $4, $5, $6)
+       VALUES ($1, '__legacy__', COALESCE($2,'user'), COALESCE($3,''), COALESCE($4,''), $5, $6)
        ON CONFLICT (username) DO UPDATE
          SET password_hash = EXCLUDED.password_hash,
              salt = EXCLUDED.salt,
@@ -37,4 +36,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+
 

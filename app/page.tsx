@@ -17,10 +17,9 @@ export default function Home() {
 
     const decide = () => {
       try {
-        // ✅ 인증 여부는 sessionStorage로만 확인
+        // ✅ 인증 여부는 sessionStorage로만 확인 (기존 흐름 유지)
         const authed = sessionStorage.getItem('erp_auth') === '1';
         if (!authed) { setView('login'); return; }
-
         setView('app');
       } catch {
         setView('login');
@@ -39,6 +38,7 @@ export default function Home() {
   if (view === 'loading') return null;
   return <AppShell />;
 }
+
 
 
 
