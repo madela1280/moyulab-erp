@@ -19,18 +19,19 @@ export default function LoginForm() {
       });
       const data = await res.json();
 
-      if (data.ok) {
-        // 로그인 성공 처리
-        localStorage.setItem('loggedInUser', JSON.stringify(data));
-        window.location.href = '/'; // 메인으로 이동
-      } else {
-        setError('로그인 실패: 아이디나 비밀번호를 확인하세요.');
-      }
-    } catch (err) {
-      console.error(err);
-      setError('서버 오류가 발생했습니다.');
-    }
-  };
+     if (data.ok) {
+  // ✅ 로그인 성공 처리 (세션 유지)
+  sessionStorage.setItem('loggedInUser', JSON.stringify(data));
+  sessionStorage.setItem('erp_auth', '1'); // 인증 플래그 저장
+  window.location.href = '/'; // 메인으로 이동
+} else {
+  setError('로그인 실패: 아이디나 비밀번호를 확인하세요.');
+}
+} catch (err) {
+  console.error(err);
+  setError('서버 오류가 발생했습니다.');
+}
+};
 
   return (
     <div className="flex flex-col items-center justify-center h-screen">
