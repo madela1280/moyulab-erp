@@ -37,9 +37,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3) 새 비번 저장
-    const newSalt = crypto.randomBytes(8).toString("hex");
-    const newHash = sha256(`${newSalt}|${body.password}`);
+      // 3) 새 비번 저장 (로그인 규칙과 동일하게 salt 고정)
+      const newSalt = 'salt1234';
+      const newHash = sha256(`${newSalt}|${body.password}`);
 
     await query(
       `UPDATE users
