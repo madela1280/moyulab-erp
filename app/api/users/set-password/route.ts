@@ -1,5 +1,4 @@
-cat > ~/moyulab-erp/app/api/users/set-password/route.ts <<'EOF'
-// app/api/users/set-password/route.ts
+ // app/api/users/set-password/route.ts
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { query } from "@/app/lib/db";
@@ -57,6 +56,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
-EOF
+
 
 
