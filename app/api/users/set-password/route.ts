@@ -1,3 +1,4 @@
+cat > ~/moyulab-erp/app/api/users/set-password/route.ts <<'EOF'
 // app/api/users/set-password/route.ts
 import { NextResponse } from "next/server";
 import crypto from "crypto";
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
 
     const u = sel.rows[0] as { username: string; password_hash: string | null; salt: string | null };
 
-    // 2) 기존 비번 확인
+    // 2) 기존 비번 검증
     if (u.password_hash && u.salt) {
       if (!body.current) {
         return NextResponse.json({ ok: false, error: "need_current" }, { status: 403 });
@@ -43,10 +44,10 @@ export async function POST(req: Request) {
 
     await query(
       `UPDATE users
-         SET password_hash = $1,
-             salt = $2,
-             updated_at = NOW()
-       WHERE username = $3`,
+          SET password_hash = $1,
+              salt = $2,
+              updated_at = NOW()
+        WHERE username = $3`,
       [newHash, newSalt, body.username]
     );
 
@@ -56,5 +57,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+EOF
 
 
