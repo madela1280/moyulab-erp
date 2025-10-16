@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 
 type ApiResp =
   | { ok: true; role: 'admin' | 'user'; username: string }
-  | { ok: false; message: string };
+  | { ok: false; error?: string; message?: string };
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,46 +19,41 @@ export default function LoginPage() {
   useEffect(() => {
     try {
       const savedId = localStorage.getItem('erp_user');
-      if (savedId) { setUserId(savedId); setRememberId(true); }
-      const onHide = () => {
-        sessionStorage.removeItem('erp_auth');
-        sessionStorage.removeItem('erp_user');
-        sessionStorage.removeItem('erp_role');
-      };
-      window.addEventListener('pagehide', onHide);
-      window.addEventListener('beforeunload', onHide);
-      return () => {
-        window.removeEventListener('pagehide', onHide);
-        window.removeEventListener('beforeunload', onHide);
-      };
+      if (savedId) {
+        setUserId(savedId);
+        setRememberId(true);
+      }
     } catch {}
   }, []);
 
   const handleLogin = async () => {
-    if (!userId || !password) { alert('아이디와 비밀번호를 입력하세요.'); return; }
+    if (!userId || !password) {
+      alert('아이디와 비밀번호를 입력하세요.');
+      return;
+    }
+
     setBusy(true);
     try {
       const resp = await fetch('/api/login', {
         method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ username: userId.trim(), password })
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // ✅ 쿠키(JWT) 수신을 위해 필수
+        body: JSON.stringify({ username: userId.trim(), password }),
       });
+
       const data: ApiResp = await resp.json();
 
       if (!data.ok) {
-        alert(data.message || '로그인 실패');
+        alert(data.message || data.error || '로그인 실패');
         return;
       }
 
+      // ✅ ID 저장 (선택)
       if (rememberId) localStorage.setItem('erp_user', userId.trim());
       else localStorage.removeItem('erp_user');
 
-            sessionStorage.setItem('erp_auth', '1');
-      sessionStorage.setItem('erp_user', data.username);
-      sessionStorage.setItem('erp_role', data.role);
-
-      router.replace('/');            
-
+      // ✅ 로그인 성공 → 홈으로 이동
+      router.replace('/');
     } catch (e) {
       alert('서버와 통신할 수 없습니다.');
     } finally {
@@ -70,8 +65,17 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-100">
       <div className="w-full max-w-sm rounded-lg p-6 bg-gray-100">
         <div className="flex items-center gap-3 mb-4">
-          <Image src="/moyulogo.jpg" alt="moulab logo" width={63} height={63} priority className="rounded-sm" />
-          <h1 className="text-[2.16rem] leading-tight font-bold text-gray-400">moulab ERP</h1>
+          <Image
+            src="/moyulogo.jpg"
+            alt="moulab logo"
+            width={63}
+            height={63}
+            priority
+            className="rounded-sm"
+          />
+          <h1 className="text-[2.16rem] leading-tight font-bold text-gray-400">
+            moulab ERP
+          </h1>
         </div>
 
         <div className="mb-3">
@@ -80,17 +84,20 @@ export default function LoginPage() {
             type="text"
             placeholder="아이디"
             value={userId}
-            onChange={(e)=>setUserId(e.target.value)}
+            onChange={(e) => setUserId(e.target.value)}
           />
         </div>
+
         <div className="mb-3">
           <input
             className="w-full border rounded px-3 py-2 bg-white"
             type="password"
             placeholder="비밀번호"
             value={password}
-            onChange={(e)=>setPassword(e.target.value)}
-            onKeyDown={(e)=>{ if (e.key==='Enter') handleLogin(); }}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleLogin();
+            }}
           />
         </div>
 
@@ -99,7 +106,7 @@ export default function LoginPage() {
             type="checkbox"
             className="mr-2"
             checked={rememberId}
-            onChange={(e)=>setRememberId(e.target.checked)}
+            onChange={(e) => setRememberId(e.target.checked)}
           />
           아이디 저장
         </label>
@@ -115,3 +122,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
