@@ -53,6 +53,9 @@ export default function LoginPage() {
       else localStorage.removeItem('erp_user');
 
       // ✅ 로그인 성공 → 홈으로 이동
+     sessionStorage.setItem('erp_auth', '1');
+     sessionStorage.setItem('erp_user', data.username);
+     sessionStorage.setItem('erp_role', data.role);
       router.replace('/');
     } catch (e) {
       alert('서버와 통신할 수 없습니다.');
