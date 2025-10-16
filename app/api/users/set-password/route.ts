@@ -1,11 +1,8 @@
- // app/api/users/set-password/route.ts
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { query } from "@/app/lib/db";
 
 type ReqBody = { username: string; current?: string; password: string };
-
-// SHA-256( salt + '|' + password )
 const sha256 = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
 
 export async function POST(req: Request) {
@@ -15,7 +12,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "missing" }, { status: 400 });
     }
 
-    // 1) 사용자 조회
     const sel = await query(
       `SELECT username, password_hash, salt FROM users WHERE username = $1 LIMIT 1`,
       [body.username]
@@ -26,7 +22,7 @@ export async function POST(req: Request) {
 
     const u = sel.rows[0] as { username: string; password_hash: string | null; salt: string | null };
 
-    // 2) 기존 비번 검증
+    // 기존 비번 검증 (있을 때만)
     if (u.password_hash && u.salt) {
       if (!body.current) {
         return NextResponse.json({ ok: false, error: "need_current" }, { status: 403 });
@@ -37,9 +33,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3) 새 salt 생성 + 새 해시 저장
-    const newSalt = crypto.randomBytes(8).toString("hex");
-    const newHash = sha256(`${newSalt}|${body.password}`);
+    // 새 salt 생성하지 않고 기존 salt 유지
+    const salt = u.salt || crypto.randomBytes(8).toString("hex");
+    const newHash = sha256(`${salt}|${body.password}`);
 
     await query(
       `UPDATE users
@@ -47,12 +43,12 @@ export async function POST(req: Request) {
               salt = $2,
               updated_at = NOW()
         WHERE username = $3`,
-      [newHash, newSalt, body.username]
+      [newHash, salt, body.username]
     );
 
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error("set-password error:", e);
+    console.error("users/set-password error:", e);
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }

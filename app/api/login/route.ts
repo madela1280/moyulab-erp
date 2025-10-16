@@ -1,4 +1,3 @@
-// app/api/login/route.ts
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { query } from "@/app/lib/db";
@@ -14,7 +13,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "missing" }, { status: 400 });
     }
 
-    // 사용자 조회
     const sql = `
       SELECT username, password_hash, salt, role, name, phone
       FROM users
@@ -28,11 +26,11 @@ export async function POST(req: Request) {
 
     const u = r.rows[0];
     const tryHash = sha256(`${u.salt}|${body.password}`);
+
     if (tryHash !== u.password_hash) {
       return NextResponse.json({ ok: false, error: "invalid_password" }, { status: 403 });
     }
 
-    // 토큰 생성
     const token = createToken({
       username: u.username,
       role: u.role,
@@ -40,7 +38,6 @@ export async function POST(req: Request) {
       phone: u.phone,
     });
 
-    // JWT를 쿠키로 저장 (HTTP only)
     const res = NextResponse.json({
       ok: true,
       username: u.username,
@@ -48,6 +45,7 @@ export async function POST(req: Request) {
       role: u.role,
       phone: u.phone,
     });
+
     res.cookies.set("token", token, {
       httpOnly: true,
       path: "/",
@@ -61,6 +59,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+
 
 
 
