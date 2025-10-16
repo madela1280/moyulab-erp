@@ -12,6 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "missing" }, { status: 400 });
     }
 
+    // 🔹 사용자 조회
     const sel = await query(
       `SELECT username, password_hash, salt FROM users WHERE username = $1 LIMIT 1`,
       [body.username]
@@ -21,37 +22,34 @@ export async function POST(req: Request) {
     }
 
     const u = sel.rows[0] as { username: string; password_hash: string | null; salt: string | null };
+    if (!u.salt) {
+      return NextResponse.json({ ok: false, error: "no_salt" }, { status: 500 });
+    }
 
-    // 기존 비번 검증 (있을 때만)
-    if (u.password_hash && u.salt) {
-      if (!body.current) {
-        return NextResponse.json({ ok: false, error: "need_current" }, { status: 403 });
-      }
+    // 🔹 기존 비밀번호 검증 (있을 때만)
+    if (u.password_hash && body.current) {
       const check = sha256(`${u.salt}|${body.current}`);
       if (check !== u.password_hash) {
         return NextResponse.json({ ok: false, error: "wrong_current" }, { status: 403 });
       }
     }
 
-    // 새 salt 생성하지 않고 기존 salt 유지
-    const salt = u.salt || crypto.randomBytes(8).toString("hex");
-    const newHash = sha256(`${salt}|${body.password}`);
+    // 🔹 기존 salt 재사용 (새 salt 생성 금지)
+    const newHash = sha256(`${u.salt}|${body.password}`);
 
     await query(
       `UPDATE users
           SET password_hash = $1,
-              salt = $2,
               updated_at = NOW()
-        WHERE username = $3`,
-      [newHash, salt, body.username]
+        WHERE username = $2`,
+      [newHash, body.username]
     );
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, message: "password_changed" });
   } catch (e) {
     console.error("users/set-password error:", e);
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
-
 
 
