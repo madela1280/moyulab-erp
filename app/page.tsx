@@ -17,7 +17,11 @@ export default function Home() {
 
     const decide = () => {
       try {
-        const authed = localStorage.getItem('erp_auth') === '1';
+        // ✅ localStorage와 sessionStorage 둘 다 검사 (시크릿 모드 대응)
+        const authed =
+          localStorage.getItem('erp_auth') === '1' ||
+          sessionStorage.getItem('erp_auth') === '1';
+
         if (!authed) {
           setView('login');
           return;
@@ -28,7 +32,7 @@ export default function Home() {
       }
     };
 
-    // ✅ 로그인 직후 세션이 늦게 써지는 문제 방지 (0.2초 지연 후 검사)
+    // ✅ 로그인 직후 세션이 늦게 써지는 문제 방지
     setTimeout(decide, 200);
 
     window.addEventListener('storage', decide);
@@ -42,6 +46,7 @@ export default function Home() {
   if (view === 'loading') return null;
   return <AppShell />;
 }
+
 
 
 
