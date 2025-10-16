@@ -1,10 +1,10 @@
-// app/api/auth/me/route.ts
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { verifyToken } from "@/app/lib/auth";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const token = req.headers.get("cookie")?.split("token=")[1]?.split(";")[0];
+    const token = cookies().get("token")?.value;
     if (!token) {
       return NextResponse.json({ ok: false, error: "no_token" }, { status: 401 });
     }
@@ -20,3 +20,4 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+
