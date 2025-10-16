@@ -5,7 +5,7 @@ import { query } from "@/app/lib/db";
 
 export async function GET() {
   try {
-    // 쿠키에서 로그인 사용자 인증
+    // ✅ 로그인 쿠키 인증
     const token = cookies().get("token")?.value;
     if (!token) {
       return NextResponse.json({ ok: false, error: "no_token" }, { status: 401 });
@@ -16,9 +16,9 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "invalid_token" }, { status: 401 });
     }
 
-    // 로그인된 사용자 기준으로 데이터 로드
+    // ✅ 사용자별 unified_rows 데이터 조회
     const sql = `
-      SELECT * 
+      SELECT data
       FROM unified_rows
       WHERE username = $1
       ORDER BY id DESC
@@ -26,9 +26,15 @@ export async function GET() {
     `;
     const r = await query(sql, [user.username]);
 
-    return NextResponse.json({ ok: true, rows: r.rows });
+    // ✅ data 필드 펼치기
+    const flatRows = r.rows.flatMap(row =>
+      Array.isArray(row.data) ? row.data : []
+    );
+
+    return NextResponse.json(flatRows);
   } catch (e) {
     console.error("unified/load error:", e);
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+
