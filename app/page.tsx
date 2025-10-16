@@ -17,16 +17,20 @@ export default function Home() {
 
     const decide = () => {
       try {
-        // ✅ 인증 여부는 sessionStorage로만 확인 (기존 흐름 유지)
         const authed = sessionStorage.getItem('erp_auth') === '1';
-        if (!authed) { setView('login'); return; }
+        if (!authed) {
+          setView('login');
+          return;
+        }
         setView('app');
       } catch {
         setView('login');
       }
     };
 
-    decide();
+    // ✅ 로그인 직후 세션이 늦게 써지는 문제 방지 (0.2초 지연 후 검사)
+    setTimeout(decide, 200);
+
     window.addEventListener('storage', decide);
     return () => window.removeEventListener('storage', decide);
   }, []);
@@ -38,6 +42,7 @@ export default function Home() {
   if (view === 'loading') return null;
   return <AppShell />;
 }
+
 
 
 
