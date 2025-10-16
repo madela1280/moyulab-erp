@@ -121,6 +121,18 @@ function PermissionGate({ routeKey, children }: { routeKey: string; children: Re
 }
 
 export default function AppShell() {
+  // ✅ 로그인 상태 확인 (쿠키 기반)
+  useEffect(() => {
+    const checkAuth = async () => {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (!data.ok) {
+        window.location.href = "/login";
+      }
+    };
+    checkAuth();
+  }, []);
+
   // 기본 랜딩: 통합관리의 첫 소카테고리
   const [openTop, setOpenTop] = useState<string>("통합관리");
   const initialFirstSub = getFirstSub("통합관리");
@@ -216,6 +228,7 @@ export default function AppShell() {
     </div>
   );
 }
+
 
 
 
