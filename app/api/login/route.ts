@@ -1,76 +1,64 @@
 // app/api/login/route.ts
-import { NextResponse } from 'next/server';
-import crypto from 'crypto';
-import { query } from '@/app/lib/db';
+import { NextResponse } from "next/server";
+import crypto from "crypto";
+import { query } from "@/app/lib/db";
+import { createToken } from "@/app/lib/auth";
 
 type ReqBody = { username: string; password: string };
-
-// 기존 규칙 유지: SHA-256( salt + '|' + password )
-const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
-
-async function dbLogin(username: string, rawPassword: string) {
-  const sql = `
-    SELECT
-      username,
-      password_hash,
-      salt,
-      COALESCE(role, 'user') AS role,
-      COALESCE(name, '')     AS name,
-      COALESCE(phone, '')    AS phone
-    FROM users
-    WHERE username = $1
-    LIMIT 1
-  `;
-  const r = await query(sql, [username]);
-
-  if (r.rows.length === 0) {
-    return { ok: false as const, code: 'invalid_user' as const };
-  }
-
-  const u = r.rows[0] as {
-    username: string;
-    password_hash: string | null;
-    salt: string | null;
-    role: string;
-    name: string;
-    phone: string;
-  };
-
-  if (!u.password_hash || !u.salt) {
-    return { ok: false as const, code: 'invalid_password' as const };
-  }
-
-  const tryHash = sha256(`${u.salt}|${rawPassword}`);
-  if (tryHash !== u.password_hash) {
-    return { ok: false as const, code: 'invalid_password' as const };
-  }
-
-  return { ok: true as const, ...u };
-}
+const sha256 = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
 
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as ReqBody;
-
     if (!body?.username || !body?.password) {
-      return NextResponse.json({ ok: false, error: 'missing' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "missing" }, { status: 400 });
     }
 
-    // 오직 DB만 사용 (파일 폴백 제거)
-    const res = await dbLogin(body.username, body.password);
-    if (!res.ok) {
-      return NextResponse.json({ ok: false, error: 'invalid' }, { status: 403 });
+    // 사용자 조회
+    const sql = `
+      SELECT username, password_hash, salt, role, name, phone
+      FROM users
+      WHERE username = $1
+      LIMIT 1
+    `;
+    const r = await query(sql, [body.username]);
+    if (r.rows.length === 0) {
+      return NextResponse.json({ ok: false, error: "invalid_user" }, { status: 403 });
     }
 
-    return NextResponse.json({
-      ok: true,
-      role: res.role,
-      username: res.username,
-      name: res.name,
-      phone: res.phone,
+    const u = r.rows[0];
+    const tryHash = sha256(`${u.salt}|${body.password}`);
+    if (tryHash !== u.password_hash) {
+      return NextResponse.json({ ok: false, error: "invalid_password" }, { status: 403 });
+    }
+
+    // 토큰 생성
+    const token = createToken({
+      username: u.username,
+      role: u.role,
+      name: u.name,
+      phone: u.phone,
     });
-  } catch {
-    return NextResponse.json({ ok: false, error: 'server' }, { status: 500 });
+
+    // JWT를 쿠키로 저장 (HTTP only)
+    const res = NextResponse.json({
+      ok: true,
+      username: u.username,
+      name: u.name,
+      role: u.role,
+      phone: u.phone,
+    });
+    res.cookies.set("token", token, {
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60, // 7일
+    });
+
+    return res;
+  } catch (e) {
+    console.error("login error:", e);
+    return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
 
