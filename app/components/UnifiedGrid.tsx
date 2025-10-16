@@ -12,6 +12,7 @@ import { GuideRuleModal, CategoryRuleModal } from './RuleModals';
 import FindPanel from './FindPanel';
 import ExtensionModal from './ExtensionModal';
 import ErrorCheckMenu from './ErrorCheckMenu';
+import { apiFetch } from "@/app/lib/fetcher";
 
 type Row = Record<string, string>;
 
@@ -100,18 +101,31 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
 
   /** rows */
   const [rows, setRows] = useState<Row[]>([]);
-  const loadRows = () => {
-    try {
-      const raw = localStorage.getItem(storageKeyFor(viewId));
-      const list = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(list) && list.length) setRows(list);
-      else {
-       setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
+  const loadRows = async () => {
+  try {
+    // ① 서버에 저장된 데이터 우선 불러오기
+    const res = await apiFetch("/api/unified/load");
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length) {
+        setRows(data);
+        localStorage.setItem(storageKeyFor(viewId), JSON.stringify(data));
+        return;
       }
-    } catch {
+    }
+
+    // ② 서버 데이터 없으면 localStorage fallback
+    const raw = localStorage.getItem(storageKeyFor(viewId));
+    const list = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(list) && list.length) setRows(list);
+    else {
       setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
     }
-  };
+  } catch (err) {
+    console.error("loadRows error", err);
+    setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
+  }
+};
   const saveRows = (next: Row[]) => {
     localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next));
     setRows(next);
