@@ -17,7 +17,7 @@ export default function Home() {
 
     const decide = () => {
       try {
-        const authed = sessionStorage.getItem('erp_auth') === '1';
+        const authed = localStorage.getItem('erp_auth') === '1';
         if (!authed) {
           setView('login');
           return;
