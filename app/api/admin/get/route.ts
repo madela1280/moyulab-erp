@@ -13,9 +13,10 @@ export async function GET() {
     if (!result.rows.length) {
       return NextResponse.json({ ok: false, error: "not_found" });
     }
-    return NextResponse.json({ ok: true, user: result.rows[0] });
+    return NextResponse.json({ ok: true, row: result.rows[0] });
   } catch (e) {
     console.error("admin/get error:", e);
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+

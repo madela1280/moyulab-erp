@@ -6,10 +6,12 @@ import { query } from "@/app/lib/db";
 export async function GET() {
   try {
     const token = cookies().get("token")?.value;
-    if (!token) return NextResponse.json({ ok: false, error: "no_token" }, { status: 401 });
+    if (!token)
+      return NextResponse.json({ ok: false, error: "no_token" }, { status: 401 });
 
     const user = verifyToken(token);
-    if (!user?.username) return NextResponse.json({ ok: false, error: "invalid_token" }, { status: 401 });
+    if (!user?.username)
+      return NextResponse.json({ ok: false, error: "invalid_token" }, { status: 401 });
 
     const r = await query(
       `SELECT data FROM unified_rows WHERE username=$1 ORDER BY id DESC LIMIT 1`,
@@ -23,6 +25,7 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+
 
 
 
