@@ -991,12 +991,11 @@ const saveRows = async (next: Row[]) => {
           })(): undefined
         }
        onSave={handleSaveExt}
-       onClose={()=>{ setShowExt(false); setHighlightRow(null); }}
-       />
-            </div>
-          </div>
-       );
-       }
+onClose={()=>{ setShowExt(false); setHighlightRow(null); }}
+/>
+    </div>
+  );
+}
 
 /** 엑셀식 필터 팝오버 */
 function ExcelFilterPopover({
