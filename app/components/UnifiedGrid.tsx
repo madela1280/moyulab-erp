@@ -1000,7 +1000,7 @@ return (
     setHighlightRow(null);
   }}
 />
-</div>
+  </div>
 );
 }
 
