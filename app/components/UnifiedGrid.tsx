@@ -994,17 +994,17 @@ return (
             })()
           : undefined
       }
-      onSave={handleSaveExt}
-      onClose={() => {
-        setShowExt(false);
-        setHighlightRow(null);
-      }}
-    />
-    </div>
+        onSave={handleSaveExt}
+  onClose={() => {
+    setShowExt(false);
+    setHighlightRow(null);
+  }}
+/>
+</div>
+</div>
 );
 }
 
-// ✅ 함수 간 구분 명확히 (빈 줄 추가)
 export default UnifiedGrid;
 
 /** 엑셀식 필터 팝오버 */
