@@ -99,50 +99,29 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     window.dispatchEvent(new Event('unified_columns_width_updated'));
   };
 
- const saveRows = async (next: Row[]) => {
-  setRows(next);
-  localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next)); // 로컬 fallback 유지
-  window.dispatchEvent(new Event('unified_rows_updated'));
+ } catch (err) {
+  console.error("loadRows error", err);
+  setRows(
+    Array.from({ length: BLANK_ROWS }, () =>
+      Object.fromEntries(colsRender.map(c => [c, '']))
+    )
+  );
+}
 
-  try {
-    // 서버에 저장 요청 (1초 지연 후 실행)
-    await new Promise((r) => setTimeout(r, 1000));
-    const res = await fetch("/api/unified/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows: next }),
-    });
-    const data = await res.json();
-    if (!data.ok) console.error("save failed:", data.error);
-  } catch (err) {
-    console.error("saveRows error:", err);
-  }
-};
-
-     } catch (err) {
-    console.error("loadRows error", err);
-    setRows(
-      Array.from({ length: BLANK_ROWS }, () =>
-        Object.fromEntries(colsRender.map(c => [c, '']))
-      )
-    );
-  } // ✅ loadRows 닫기 — 세미콜론 절대 넣지 말 것
-
-// ✅ 여기서부터 saveRows (딱 한 번만 존재)
+// ✅ saveRows — 단 한 번만 존재해야 함
 const saveRows = async (next: Row[]) => {
   setRows(next);
   localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next));
   window.dispatchEvent(new Event('unified_rows_updated'));
 
   try {
-    // 서버에 저장 요청 (1초 지연 후 실행)
+    // 서버에 저장 요청 (1초 지연)
     await new Promise((r) => setTimeout(r, 1000));
     const res = await fetch("/api/unified/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rows: next }),
     });
-
     const data = await res.json();
     if (!data.ok) {
       console.error("❌ DB 저장 실패:", data.error);
