@@ -99,20 +99,25 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     window.dispatchEvent(new Event('unified_columns_width_updated'));
   };
 
-  /** rows */
-  const [rows, setRows] = useState<Row[]>([]);
-  const loadRows = async () => {
+ const saveRows = async (next: Row[]) => {
+  setRows(next);
+  localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next)); // 로컬 fallback 유지
+  window.dispatchEvent(new Event('unified_rows_updated'));
+
   try {
-    // ① 서버에 저장된 데이터 우선 불러오기
-    const res = await apiFetch("/api/unified/load");
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length) {
-        setRows(data);
-        localStorage.setItem(storageKeyFor(viewId), JSON.stringify(data));
-        return;
-      }
-    }
+    // 서버에 저장 요청 (1초 지연 후 실행)
+    await new Promise((r) => setTimeout(r, 1000));
+    const res = await fetch("/api/unified/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rows: next }),
+    });
+    const data = await res.json();
+    if (!data.ok) console.error("save failed:", data.error);
+  } catch (err) {
+    console.error("saveRows error:", err);
+  }
+};
 
     // ② 서버 데이터 없으면 localStorage fallback
     const raw = localStorage.getItem(storageKeyFor(viewId));

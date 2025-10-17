@@ -2,28 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 
-/**
- * 관리자 단 한 명. ID는 고정(medela1280), 비밀번호는 변경 가능.
- * 로컬 저장 키
- *  - admin_name, admin_phone
- *  - admin_id         : 항상 'medela1280'
- *  - admin_pw_hash    : SHA-256 해시(텍스트 저장 방지)
- *  - admin_pw_salt    : 해시용 salt
- *  - admin_pw_set     : '1' 이면 비번 설정 완료(초기설정 페이지 재등장 방지용)
- */
 const ADMIN_ID_FIXED = 'medela1280';
-
-async function sha256(text: string) {
-  const enc = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function randomSalt(len = 16) {
-  const bytes = new Uint8Array(len);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 export default function AdminSetting() {
   const [name, setName] = useState('');
@@ -32,64 +11,92 @@ export default function AdminSetting() {
   const [pw2, setPw2] = useState('');
   const [status, setStatus] = useState<string | null>(null);
 
-  // 초기 로드: 기존값 불러오기
+  // ✅ 초기 로드: DB → 없으면 localStorage fallback
   useEffect(() => {
-    try {
-      const savedName = localStorage.getItem('admin_name') || '';
-      const savedPhone = localStorage.getItem('admin_phone') || '';
-      setName(savedName);
-      setPhone(savedPhone);
-    } catch (e) {
-      console.error(e);
-    }
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/get');
+        const data = await res.json();
+        if (data.ok && data.row) {
+          setName(data.row.name || '');
+          setPhone(data.row.phone || '');
+        } else {
+          const savedName = localStorage.getItem('admin_name') || '';
+          const savedPhone = localStorage.getItem('admin_phone') || '';
+          setName(savedName);
+          setPhone(savedPhone);
+        }
+      } catch (e) {
+        console.error(e);
+        const savedName = localStorage.getItem('admin_name') || '';
+        const savedPhone = localStorage.getItem('admin_phone') || '';
+        setName(savedName);
+        setPhone(savedPhone);
+      }
+    })();
   }, []);
 
+  // ✅ 저장 (DB + localStorage 모두 반영)
   const handleSave = async () => {
-  setStatus(null);
+    setStatus(null);
 
-  if (!name.trim()) { setStatus('이름을 입력하세요.'); return; }
-  if (!phone.trim()) { setStatus('전화번호를 입력하세요.'); return; }
-  if (pw && pw !== pw2) { setStatus('비밀번호가 서로 다릅니다.'); return; }
+    if (!name.trim()) { setStatus('이름을 입력하세요.'); return; }
+    if (!phone.trim()) { setStatus('전화번호를 입력하세요.'); return; }
+    if (pw && pw !== pw2) { setStatus('비밀번호가 서로 다릅니다.'); return; }
 
-  try {
-    localStorage.setItem('admin_name', name.trim());
-    localStorage.setItem('admin_phone', phone.trim());
-    localStorage.setItem('admin_id', ADMIN_ID_FIXED);
-
-    if (pw) {
-      const res = await fetch('/api/admin/set-password', {
+    try {
+      // DB 저장 요청
+      const saveRes = await fetch('/api/admin/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: ADMIN_ID_FIXED,
-          password: pw,
+          name: name.trim(),
+          phone: phone.trim(),
         }),
       });
-
-      const data = await res.json();
-      if (!data.ok) {
-        setStatus('서버 오류: 비밀번호 변경 실패');
+      const saveData = await saveRes.json();
+      if (!saveData.ok) {
+        setStatus('서버 오류: 관리자 정보 저장 실패');
         return;
       }
 
-      setStatus('비밀번호가 변경되었습니다. 다시 로그인하세요.');
+      // localStorage에도 동일하게 반영 (백업용)
+      localStorage.setItem('admin_name', name.trim());
+      localStorage.setItem('admin_phone', phone.trim());
+      localStorage.setItem('admin_id', ADMIN_ID_FIXED);
 
-      // 로그인 세션 제거 후 로그인 페이지로 이동
-      localStorage.removeItem('erp_auth');
-      localStorage.removeItem('erp_auth_exp');
-      sessionStorage.removeItem('erp_auth');
-      window.location.href = '/login';
-      return;
+      // 비밀번호 변경 로직
+      if (pw) {
+        const pwRes = await fetch('/api/admin/set-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: ADMIN_ID_FIXED,
+            password: pw,
+          }),
+        });
+        const pwData = await pwRes.json();
+        if (!pwData.ok) {
+          setStatus('비밀번호 변경 실패');
+          return;
+        }
+
+        setStatus('비밀번호가 변경되었습니다. 다시 로그인하세요.');
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/login';
+        return;
+      }
+
+      setPw('');
+      setPw2('');
+      setStatus('저장되었습니다.');
+    } catch (e) {
+      console.error(e);
+      setStatus('저장 중 오류가 발생했습니다.');
     }
-
-    setPw('');
-    setPw2('');
-    setStatus('저장되었습니다.');
-  } catch (e) {
-    console.error(e);
-    setStatus('저장 중 오류가 발생했습니다.');
-  }
-};
+  };
 
   return (
     <div className="min-h-[calc(100vh-80px)] flex items-start justify-center">
@@ -168,4 +175,5 @@ export default function AdminSetting() {
     </div>
   );
 }
+
 
