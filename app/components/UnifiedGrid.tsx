@@ -995,14 +995,14 @@ return (
           : undefined
       }
       onSave={handleSaveExt}
-  onClose={() => {
-    setShowExt(false);
-    setHighlightRow(null);
-  }}
+onClose={() => {
+  setShowExt(false);
+  setHighlightRow(null);
+}}
 />
   </div>
 );
-}
+};
 
 export default UnifiedGrid;
 
