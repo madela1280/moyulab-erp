@@ -1006,26 +1006,43 @@ return (
 
 export default UnifiedGrid;
 
-
-
 /** 엑셀식 필터 팝오버 */
-function ExcelFilterPopover(props: {
+const ExcelFilterPopover = ({
+  title,
+  allValues,
+  currentSet,
+  currentSort,
+  onApply,
+  onClose,
+}: {
   title: string;
   allValues: string[];
   currentSet: Set<string>;
   currentSort: 'asc' | 'desc' | null;
   onApply: (sel: Set<string>, sort: 'asc' | 'desc' | null) => void;
   onClose: () => void;
-}) {
-  const { title, allValues, currentSet, currentSort, onApply, onClose } = props;
-  const toggleAll = (checked:boolean) => {
+}) => {
+  const [search, setSearch] = useState('');
+  const [temp, setTemp] = useState<Set<string>>(new Set(currentSet));
+  const [sort, setSort] = useState<'asc' | 'desc' | null>(currentSort);
+
+  const filtered = useMemo(
+    () => allValues.filter(v => v.toLowerCase().includes(search.toLowerCase())),
+    [allValues, search]
+  );
+  const allChecked = filtered.length > 0 && filtered.every(v => temp.has(v));
+
+  const toggleAll = (checked: boolean) => {
     const next = new Set(temp);
-    if (checked) filtered.forEach(v=>next.add(v)); else filtered.forEach(v=>next.delete(v));
+    if (checked) filtered.forEach(v => next.add(v));
+    else filtered.forEach(v => next.delete(v));
     setTemp(next);
   };
-  const toggle = (v:string, checked:boolean) => {
+
+  const toggle = (v: string, checked: boolean) => {
     const next = new Set(temp);
-    if (checked) next.add(v); else next.delete(v);
+    if (checked) next.add(v);
+    else next.delete(v);
     setTemp(next);
   };
 
@@ -1034,38 +1051,82 @@ function ExcelFilterPopover(props: {
       <div className="p-2 border-b text-sm font-semibold">{title}</div>
 
       <div className="p-2 flex gap-2">
-        <button className={`px-2 py-1 text-xs border rounded ${sort==='asc'?'bg-blue-50 border-blue-300':''}`} onClick={()=>setSort('asc')}>텍스트 오름차순 정렬</button>
-        <button className={`px-2 py-1 text-xs border rounded ${sort==='desc'?'bg-blue-50 border-blue-300':''}`} onClick={()=>setSort('desc')}>텍스트 내림차순 정렬</button>
+        <button
+          className={`px-2 py-1 text-xs border rounded ${
+            sort === 'asc' ? 'bg-blue-50 border-blue-300' : ''
+          }`}
+          onClick={() => setSort('asc')}
+        >
+          텍스트 오름차순 정렬
+        </button>
+        <button
+          className={`px-2 py-1 text-xs border rounded ${
+            sort === 'desc' ? 'bg-blue-50 border-blue-300' : ''
+          }`}
+          onClick={() => setSort('desc')}
+        >
+          텍스트 내림차순 정렬
+        </button>
       </div>
 
       <div className="px-2">
-        <input className="w-full border rounded px-2 py-1 text-sm mb-2" placeholder="검색" value={search} onChange={(e)=>setSearch(e.target.value)} />
+        <input
+          className="w-full border rounded px-2 py-1 text-sm mb-2"
+          placeholder="검색"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       <div className="px-2 mb-2">
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={allChecked} onChange={(e)=>toggleAll(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={allChecked}
+            onChange={(e) => toggleAll(e.target.checked)}
+          />
           (모두 선택)
         </label>
       </div>
 
       <div className="max-h-56 overflow-auto px-2 pb-2">
-        {filtered.map(v => (
-          <label key={v || '(빈 값)'} className="flex items-center gap-2 text-sm py-0.5">
-            <input type="checkbox" checked={temp.has(v)} onChange={(e)=>toggle(v,e.target.checked)} />
-            <span className="truncate" title={v || '(빈 값)'}>{v || '(빈 값)'}</span>
+        {filtered.map((v) => (
+          <label
+            key={v || '(빈 값)'}
+            className="flex items-center gap-2 text-sm py-0.5"
+          >
+            <input
+              type="checkbox"
+              checked={temp.has(v)}
+              onChange={(e) => toggle(v, e.target.checked)}
+            />
+            <span className="truncate" title={v || '(빈 값)'}>
+              {v || '(빈 값)'}
+            </span>
           </label>
         ))}
-        {filtered.length===0 && <div className="text-xs text-gray-400 py-2">검색 결과 없음</div>}
+        {filtered.length === 0 && (
+          <div className="text-xs text-gray-400 py-2">검색 결과 없음</div>
+        )}
       </div>
 
       <div className="p-2 border-t flex justify-end gap-2">
-        <button className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50" onClick={onClose}>취소</button>
-        <button className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700" onClick={()=>onApply(temp, sort)}>확인</button>
+        <button
+          className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+          onClick={onClose}
+        >
+          취소
+        </button>
+        <button
+          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+          onClick={() => onApply(temp, sort)}
+        >
+          확인
+        </button>
       </div>
     </div>
   );
-}
+};
 
 /** 칼라 메뉴 */
 function ColorMenu({ onApply }:{ onApply:(mode:'bg'|'text', color?:string)=>void }) {
