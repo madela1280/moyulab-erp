@@ -753,8 +753,7 @@ const saveRows = async (next: Row[]) => {
             </>
           )}
         </div>
-      </div>
-
+      
       {/* 표 */}
       <div className="p-2">
         <div
