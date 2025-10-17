@@ -994,28 +994,20 @@ return (
             })()
           : undefined
       }
-      onSave={handleSaveExt}
+        onSave={handleSaveExt}
   onClose={() => {
     setShowExt(false);
     setHighlightRow(null);
   }}
 />
-</div>
-  );
+  </div>
+);
 }
 
 export default UnifiedGrid;
 
-
 /** 엑셀식 필터 팝오버 */
-function ExcelFilterPopover({
-  title,
-  allValues,
-  currentSet,
-  currentSort,
-  onApply,
-  onClose,
-}: {
+function ExcelFilterPopover(props: {
   title: string;
   allValues: string[];
   currentSet: Set<string>;
@@ -1023,6 +1015,7 @@ function ExcelFilterPopover({
   onApply: (sel: Set<string>, sort: 'asc' | 'desc' | null) => void;
   onClose: () => void;
 }) {
+  const { title, allValues, currentSet, currentSort, onApply, onClose } = props;
   const [search, setSearch] = useState('');
   const [temp, setTemp] = useState<Set<string>>(new Set(currentSet));
   const [sort, setSort] = useState<'asc'|'desc'|null>(currentSort);
