@@ -991,10 +991,9 @@ const saveRows = async (next: Row[]) => {
           })(): undefined
         }
      onSave={handleSaveExt}
-onClose={()=>{ setShowExt(false); setHighlightRow(null); }}
-/>
+     onClose={()=>{ setShowExt(false); setHighlightRow(null); }}
+       />
     </div>
-  </div>
   );
 }
 
