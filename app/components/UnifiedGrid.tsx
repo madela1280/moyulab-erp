@@ -119,24 +119,36 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   }
 };
 
-    // ② 서버 데이터 없으면 localStorage fallback
-    const raw = localStorage.getItem(storageKeyFor(viewId));
-    const list = raw ? JSON.parse(raw) : [];
-    if (Array.isArray(list) && list.length) setRows(list);
-    else {
-      setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
-    }
-  } catch (err) {
-    console.error("loadRows error", err);
-    setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
-  }
-};
- const saveRows = async (next: Row[]) => {
+  // ② 서버 데이터 없으면 localStorage fallback
+const raw = localStorage.getItem(storageKeyFor(viewId));
+const list = raw ? JSON.parse(raw) : [];
+if (Array.isArray(list) && list.length) {
+  setRows(list);
+} else {
+  setRows(
+    Array.from({ length: BLANK_ROWS }, () =>
+      Object.fromEntries(colsRender.map(c => [c, '']))
+    )
+  );
+}
+} catch (err) {
+  console.error("loadRows error", err);
+  setRows(
+    Array.from({ length: BLANK_ROWS }, () =>
+      Object.fromEntries(colsRender.map(c => [c, '']))
+    )
+  );
+} // ✅ 세미콜론 제거 (중요)
+
+// ✅ saveRows 함수 — 단 한 번만 존재해야 함
+const saveRows = async (next: Row[]) => {
   setRows(next);
   localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next));
   window.dispatchEvent(new Event('unified_rows_updated'));
 
   try {
+    // 서버에 저장 요청 (1초 지연 후 실행)
+    await new Promise((r) => setTimeout(r, 1000));
     const res = await fetch("/api/unified/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
