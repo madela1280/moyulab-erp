@@ -700,8 +700,7 @@ const saveRows = async (next: Row[]) => {
               </div>
             )}
           </div>
-        )}
-
+        
         {/* 좌측: 필터/검색/다운로드/칼라/오류검사 */}
         <div className="ml-3 flex items-center gap-2">
           <button
