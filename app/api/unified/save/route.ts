@@ -21,13 +21,13 @@ export async function POST(req: Request) {
     await query(`
       CREATE TABLE IF NOT EXISTS unified_rows (
         id SERIAL PRIMARY KEY,
-        username VARCHAR(100) NOT NULL,
-        data JSONB,
+        username VARCHAR(255),
+        data JSONB NOT NULL DEFAULT '[]'::jsonb,
         updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // ✅ 기존 데이터 덮어쓰기
+    // ✅ 사용자별 최신 데이터로 갱신
     await query(`DELETE FROM unified_rows WHERE username = $1`, [user.username]);
     await query(
       `INSERT INTO unified_rows (username, data) VALUES ($1, $2)`,
