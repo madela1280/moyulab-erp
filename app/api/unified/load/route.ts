@@ -11,21 +11,18 @@ export async function GET() {
     const user = verifyToken(token);
     if (!user?.username) return NextResponse.json({ ok: false, error: "invalid_token" }, { status: 401 });
 
-    const sql = `
-      SELECT data
-      FROM unified_rows
-      WHERE username = $1
-      ORDER BY id DESC
-      LIMIT 1
-    `;
-    const r = await query(sql, [user.username]);
-    const rows = r.rows[0]?.data ?? [];
+    const r = await query(
+      `SELECT data FROM unified_rows WHERE username=$1 ORDER BY id DESC LIMIT 1`,
+      [user.username]
+    );
 
+    const rows = r.rows?.[0]?.data ?? [];
     return NextResponse.json({ ok: true, rows });
   } catch (e) {
     console.error("unified/load error:", e);
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+
 
 
