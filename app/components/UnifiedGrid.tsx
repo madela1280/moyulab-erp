@@ -126,11 +126,28 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     setRows(Array.from({ length: BLANK_ROWS }, () => Object.fromEntries(colsRender.map(c => [c, '']))));
   }
 };
-  const saveRows = (next: Row[]) => {
-    localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next));
-    setRows(next);
-    window.dispatchEvent(new Event('unified_rows_updated'));
-  };
+ const saveRows = async (next: Row[]) => {
+  setRows(next);
+  localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next));
+  window.dispatchEvent(new Event('unified_rows_updated'));
+
+  try {
+    const res = await fetch("/api/unified/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rows: next }),
+    });
+
+    const data = await res.json();
+    if (!data.ok) {
+      console.error("❌ DB 저장 실패:", data.error);
+    } else {
+      console.log("✅ DB 저장 완료");
+    }
+  } catch (err) {
+    console.error("saveRows error:", err);
+  }
+};
 
   /** 삭제/체크 (체크된 행 제거) */
   const [checked, setChecked] = useState<Record<number, boolean>>({});
