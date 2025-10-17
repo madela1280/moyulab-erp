@@ -1000,21 +1000,24 @@ return (
         setHighlightRow(null);
       }}
     />
-  </div>
+    </div>
 );
 }
- 
+
+// ✅ 함수 간 구분 명확히 (빈 줄 추가)
+export default UnifiedGrid;
+
 /** 엑셀식 필터 팝오버 */
 function ExcelFilterPopover({
   title, allValues, currentSet, currentSort,
   onApply, onClose
-}:{
+}: {
   title: string;
   allValues: string[];
   currentSet: Set<string>;
-  currentSort: 'asc'|'desc'|null;
-  onApply: (sel:Set<string>, sort:'asc'|'desc'|null)=>void;
-  onClose: ()=>void;
+  currentSort: 'asc' | 'desc' | null;
+  onApply: (sel: Set<string>, sort: 'asc' | 'desc' | null) => void;
+  onClose: () => void;
 }) {
   const [search, setSearch] = useState('');
   const [temp, setTemp] = useState<Set<string>>(new Set(currentSet));
