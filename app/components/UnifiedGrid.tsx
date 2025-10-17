@@ -99,16 +99,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
     window.dispatchEvent(new Event('unified_columns_width_updated'));
   };
 
- } catch (err) {
-  console.error("loadRows error", err);
-  setRows(
-    Array.from({ length: BLANK_ROWS }, () =>
-      Object.fromEntries(colsRender.map(c => [c, '']))
-    )
-  );
-}
-
-// ✅ saveRows — 단 한 번만 존재해야 함
+ // ✅ saveRows — 단 한 번만 존재해야 함
 const saveRows = async (next: Row[]) => {
   setRows(next);
   localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next));
