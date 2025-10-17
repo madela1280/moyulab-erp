@@ -119,28 +119,17 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   }
 };
 
-  // ② 서버 데이터 없으면 localStorage fallback
-const raw = localStorage.getItem(storageKeyFor(viewId));
-const list = raw ? JSON.parse(raw) : [];
-if (Array.isArray(list) && list.length) {
-  setRows(list);
-} else {
-  setRows(
-    Array.from({ length: BLANK_ROWS }, () =>
-      Object.fromEntries(colsRender.map(c => [c, '']))
-    )
-  );
-}
-} catch (err) {
-  console.error("loadRows error", err);
-  setRows(
-    Array.from({ length: BLANK_ROWS }, () =>
-      Object.fromEntries(colsRender.map(c => [c, '']))
-    )
-  );
-} // ✅ 세미콜론 제거 (중요)
+    } catch (err) {
+    console.error("loadRows error", err);
+    setRows(
+      Array.from({ length: BLANK_ROWS }, () =>
+        Object.fromEntries(colsRender.map(c => [c, '']))
+      )
+    );
+  }
+}; // ✅ 여기까지가 loadRows 끝
 
-// ✅ saveRows 함수 — 단 한 번만 존재해야 함
+// ✅ 여기서부터 saveRows (딱 한 번만 존재)
 const saveRows = async (next: Row[]) => {
   setRows(next);
   localStorage.setItem(storageKeyFor(viewId), JSON.stringify(next));
