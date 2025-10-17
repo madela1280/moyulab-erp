@@ -702,8 +702,7 @@ const saveRows = async (next: Row[]) => {
                 </div>
                 </div>
                 </div>
-       
-         {/* 좌측: 필터/검색/다운로드/칼라/오류검사 */}
+                {/* 좌측: 필터/검색/다운로드/칼라/오류검사 */}
         <div className="ml-3 flex items-center gap-2">
           <button
             className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
