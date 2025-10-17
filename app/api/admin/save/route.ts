@@ -10,19 +10,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "missing_fields" });
     }
 
-    const sql = `
-      UPDATE users
-      SET name = $1, phone = $2
-      WHERE username = 'medela1280'
-    `;
-    await query(sql, [name, phone]);
+    await query(
+      `UPDATE users SET name = $1, phone = $2 WHERE username = 'medela1280'`,
+      [name, phone]
+    );
 
-    return NextResponse.json({ ok: true });
+    const r = await query(
+      `SELECT username, name, phone FROM users WHERE username = 'medela1280' LIMIT 1`
+    );
+
+    return NextResponse.json({ ok: true, row: r.rows[0] });
   } catch (e) {
     console.error("admin/save error:", e);
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+
 
 
 
