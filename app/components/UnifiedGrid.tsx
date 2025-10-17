@@ -992,9 +992,10 @@ const saveRows = async (next: Row[]) => {
         }
      onSave={handleSaveExt}
      onClose={()=>{ setShowExt(false); setHighlightRow(null); }}
-       />
-    </div>
- );
+            />
+     </div>
+   </div>
+  );
 }
 
 /** 엑셀식 필터 팝오버 */
