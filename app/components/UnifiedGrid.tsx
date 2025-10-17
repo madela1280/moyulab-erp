@@ -990,10 +990,10 @@ const saveRows = async (next: Row[]) => {
             return { days, reasons: reason ? [reason] : [''], amount, due };
           })(): undefined
         }
-     onSave={handleSaveExt}
+      onSave={handleSaveExt}
      onClose={()=>{ setShowExt(false); setHighlightRow(null); }}
-            />
-     </div>
+             />
+    </div>
   );
 }
 
