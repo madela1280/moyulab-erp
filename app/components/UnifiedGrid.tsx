@@ -119,7 +119,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   }
 };
 
-    } catch (err) {
+      } catch (err) {
     console.error("loadRows error", err);
     setRows(
       Array.from({ length: BLANK_ROWS }, () =>
@@ -127,7 +127,7 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
       )
     );
   }
-}; // ✅ 여기까지가 loadRows 끝
+} // ✅ 세미콜론 제거 완료
 
 // ✅ 여기서부터 saveRows (딱 한 번만 존재)
 const saveRows = async (next: Row[]) => {
