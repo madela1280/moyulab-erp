@@ -994,7 +994,7 @@ const saveRows = async (next: Row[]) => {
 onClose={()=>{ setShowExt(false); setHighlightRow(null); }}
 />
     </div>
-  </div>   {/* ✅ 이 줄 추가 */}
+  </div>
   );
 }
 
