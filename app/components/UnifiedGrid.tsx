@@ -696,13 +696,15 @@ const saveRows = async (next: Row[]) => {
                   <button className="px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700" onClick={doMove}>적용</button>
                   <button className="px-2 py-1 text-sm border rounded hover:bg-gray-50" onClick={()=>setMoveOpen(false)}>닫기</button>
                 </div>
-                <div className="text-[11px] text-gray-500 mt-2">* 규칙으로 저장되며 뷰가 재구성됩니다.</div>
-              </div>
+                 <div className="text-[11px] text-gray-500 mt-2">
+                   * 규칙으로 저장되며 뷰가 재구성됩니다.
+                </div>
+                           </div>
                             )}
                         </div>
                       </div>
        
-        {/* 좌측: 필터/검색/다운로드/칼라/오류검사 */}
+         {/* 좌측: 필터/검색/다운로드/칼라/오류검사 */}
         <div className="ml-3 flex items-center gap-2">
           <button
             className={`px-2 py-1 text-xs border rounded ${filterMode ? 'bg-blue-50 border-blue-300 text-blue-700' : 'hover:bg-gray-50'}`}
