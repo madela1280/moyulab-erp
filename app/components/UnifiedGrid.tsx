@@ -990,11 +990,11 @@ const saveRows = async (next: Row[]) => {
             return { days, reasons: reason ? [reason] : [''], amount, due };
           })(): undefined
         }
-        onSave={handleSaveExt}
-        onClose={()=>{ setShowExt(false); setHighlightRow(null); }}
-               />
+       onSave={handleSaveExt}
+onClose={()=>{ setShowExt(false); setHighlightRow(null); }}
+/>
     </div>
-  )
+  );
 }
 
 /** 엑셀식 필터 팝오버 */
