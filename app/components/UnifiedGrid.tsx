@@ -91,15 +91,20 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   };
 
   const [rows, setRows] = useState<Row[]>([]);
-  const loadRows = () => {
-    try {
-      const raw = localStorage.getItem(storageKeyFor(viewId));
-      const arr = raw ? JSON.parse(raw) : [];
-      setRows(Array.isArray(arr) ? arr : []);
-    } catch {
+  const loadRows = async () => {
+  try {
+    const res = await fetch(`/api/unified/load?viewId=${viewId}`, { cache: "no-store" });
+    const data = await res.json();
+    if (data.ok && Array.isArray(data.rows)) {
+      setRows(data.rows);
+    } else {
       setRows([]);
     }
-  };
+  } catch (err) {
+    console.error("loadRows error:", err);
+    setRows([]);
+  }
+};
 
   const saveRows = async (next: Row[]) => {
     setRows(next);
