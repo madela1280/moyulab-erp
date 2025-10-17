@@ -994,7 +994,7 @@ return (
             })()
           : undefined
       }
-        onSave={handleSaveExt}
+      onSave={handleSaveExt}
   onClose={() => {
     setShowExt(false);
     setHighlightRow(null);
@@ -1006,6 +1006,8 @@ return (
 
 export default UnifiedGrid;
 
+
+
 /** 엑셀식 필터 팝오버 */
 function ExcelFilterPopover(props: {
   title: string;
@@ -1016,15 +1018,6 @@ function ExcelFilterPopover(props: {
   onClose: () => void;
 }) {
   const { title, allValues, currentSet, currentSort, onApply, onClose } = props;
-  const [search, setSearch] = useState('');
-  const [temp, setTemp] = useState<Set<string>>(new Set(currentSet));
-  const [sort, setSort] = useState<'asc'|'desc'|null>(currentSort);
-
-  const filtered = useMemo(
-    () => allValues.filter(v => v.toLowerCase().includes(search.toLowerCase())),
-    [allValues, search]
-  );
-  const allChecked = filtered.length>0 && filtered.every(v => temp.has(v));
   const toggleAll = (checked:boolean) => {
     const next = new Set(temp);
     if (checked) filtered.forEach(v=>next.add(v)); else filtered.forEach(v=>next.delete(v));
