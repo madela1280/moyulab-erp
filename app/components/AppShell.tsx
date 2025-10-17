@@ -56,6 +56,7 @@ export const MENUS: MenuNode[] = [
 export const VIEW_MAP: Record<string, React.ComponentType<any>> = {
   // 통합관리
   "통합관리": UnifiedManagement,
+  "통합관리>통합관리": UnifiedManagement, 
   "통합관리>온라인": OnlineManagement,
   "통합관리>보건소": HealthCenterManagement,
   "통합관리>조리원": PostpartumManagement,
