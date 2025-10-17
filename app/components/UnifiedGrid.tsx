@@ -93,10 +93,11 @@ export default function UnifiedGrid({ viewId }: { viewId: '통합관리'|'온라
   const [rows, setRows] = useState<Row[]>([]);
   const loadRows = async () => {
   try {
-    const res = await fetch(`/api/unified/load?viewId=${viewId}`, { cache: "no-store" });
+    const res = await fetch(`/api/unified/load`, { cache: "no-store" });
     const data = await res.json();
     if (data.ok && Array.isArray(data.rows)) {
       setRows(data.rows);
+      localStorage.setItem(storageKeyFor(viewId), JSON.stringify(data.rows)); // ← 동기화
     } else {
       setRows([]);
     }
