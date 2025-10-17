@@ -975,31 +975,35 @@ const saveRows = async (next: Row[]) => {
         />
       )}
 
-      {/* ★ 연장 입력 모달 (0차 제외하고 1~5차에서만 open) */}
-      <ExtensionModal
-        key={showExt && extRow!=null && extCol ? `${extRow}-${extCol}` : 'closed'}
-        open={!!showExt && extRow!=null && !!extCol && isExtCol(extCol) && !!rows[extRow]}
-        initial={
-          (extRow!=null && extCol && rows[extRow]) ? (()=>{ 
-            const str = ((rows[extRow] ?? {})[extCol] ?? '').toString();
-            const [daysStr='',reason='',amountStr='',endDate=''] = str.split('/');
-            const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
-            const amountNum = Number((amountStr || '').replace(/[^\d.-]/g, ''));
-            const amount = Number.isFinite(amountNum) ? Math.max(0, Math.floor(amountNum)) : 0;
-            const due = /^\d{4}-\d{2}-\d{2}$/.test((endDate || '').trim()) ? (endDate || '').trim() : '';
-            return { days, reasons: reason ? [reason] : [''], amount, due };
-          })(): undefined
-        }
-           onSave={handleSaveExt}
+    {/* ★ 연장 입력 모달 (0차 제외하고 1~5차에서만 open) */}
+return (
+  <div>
+    <ExtensionModal
+      key={showExt && extRow != null && extCol ? `${extRow}-${extCol}` : 'closed'}
+      open={!!showExt && extRow != null && !!extCol && isExtCol(extCol) && !!rows[extRow]}
+      initial={
+        (extRow != null && extCol && rows[extRow])
+          ? (() => {
+              const str = ((rows[extRow] ?? {})[extCol] ?? '').toString();
+              const [daysStr = '', reason = '', amountStr = '', endDate = ''] = str.split('/');
+              const days = Number.isFinite(Number(daysStr)) ? Number(daysStr) : 0;
+              const amountNum = Number((amountStr || '').replace(/[^\d.-]/g, ''));
+              const amount = Number.isFinite(amountNum) ? Math.max(0, Math.floor(amountNum)) : 0;
+              const due = /^\d{4}-\d{2}-\d{2}$/.test((endDate || '').trim()) ? (endDate || '').trim() : '';
+              return { days, reasons: reason ? [reason] : [''], amount, due };
+            })()
+          : undefined
+      }
+      onSave={handleSaveExt}
       onClose={() => {
         setShowExt(false);
         setHighlightRow(null);
       }}
     />
   </div>
-  );
+);
 }
-
+ 
 /** 엑셀식 필터 팝오버 */
 function ExcelFilterPopover({
   title, allValues, currentSet, currentSort,
