@@ -679,8 +679,6 @@ const saveRows = async (next: Row[]) => {
                     * 규칙으로 저장되며 뷰가 재구성됩니다.
                 </div>
                 </div>
-                </div>
-                </div>
                 {/* 좌측: 필터/검색/다운로드/칼라/오류검사 */}
         <div className="ml-3 flex items-center gap-2">
           <button
