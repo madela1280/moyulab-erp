@@ -994,22 +994,27 @@ return (
             })()
           : undefined
       }
-        onSave={handleSaveExt}
+      onSave={handleSaveExt}
   onClose={() => {
     setShowExt(false);
     setHighlightRow(null);
   }}
 />
-  </div>
-);
+</div>
+  );
 }
 
 export default UnifiedGrid;
 
+
 /** 엑셀식 필터 팝오버 */
 function ExcelFilterPopover({
-  title, allValues, currentSet, currentSort,
-  onApply, onClose
+  title,
+  allValues,
+  currentSet,
+  currentSort,
+  onApply,
+  onClose,
 }: {
   title: string;
   allValues: string[];
