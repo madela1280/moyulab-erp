@@ -1,5 +1,9 @@
 {
-  "/api/unified/route": "app/api/unified/route.js",
   "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/test/route": "app/api/test/route.js",
+  "/api/login/route": "app/api/login/route.js",
+  "/api/unified/route": "app/api/unified/route.js",
+  "/login/page": "app/login/page.js",
   "/page": "app/page.js"
 }
