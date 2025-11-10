@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 
-const AppShell = dynamic(() => import('@/app/components/AppShell'), { ssr: false });
+const AppShell = dynamic(() => import('./components/AppShell'), { ssr: false });
 
 export default function Home() {
   const router = useRouter();
@@ -29,5 +29,10 @@ export default function Home() {
 
   if (loading) return null;
   if (!authed) return null;
-  return <AppShell />;
+
+  return (
+    <div className="flex flex-col w-full min-h-screen">
+      <AppShell />
+    </div>
+  );
 }

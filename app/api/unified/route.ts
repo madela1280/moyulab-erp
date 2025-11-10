@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth"; // ✅ 세션 유저 확인 함수 (login 쿠키 기반)
 
-// ✅ DB에서 데이터 가져오기
 export async function GET() {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+
     const result = await query("SELECT data FROM unified WHERE id = 1");
     const rows = result.rows.length ? result.rows[0].data : [];
     return NextResponse.json(rows);
@@ -13,9 +16,11 @@ export async function GET() {
   }
 }
 
-// ✅ DB에 데이터 저장하기
 export async function POST(req: Request) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+
     const body = await req.json();
     const { rows } = body;
 

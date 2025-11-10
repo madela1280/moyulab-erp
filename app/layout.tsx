@@ -1,25 +1,34 @@
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ReactNode } from "react";
+import "../public/output.css";
 
-export const metadata = {
-  title: "Moulab ERP",
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Moyulab ERP",
   description: "모유랩 ERP 시스템",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  // ✅ hydration mismatch 방지: React 클라이언트 환경 확실히 지정
-  if (typeof window === "undefined") {
-    // 서버일 때는 간단한 placeholder만 리턴
-    return (
-      <html lang="ko">
-        <body className="bg-gray-100">{children}</body>
-      </html>
-    );
-  }
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className="min-h-screen bg-gray-100">{children}</body>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-100 min-h-screen`}
+        suppressHydrationWarning
+      >
+        <main className="flex flex-col items-center justify-center min-h-screen w-full">
+          {children}
+        </main>
+      </body>
     </html>
   );
 }

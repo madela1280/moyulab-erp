@@ -1,9 +1,45 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
-html, body {
+/* 🎨 전역 색상 정의 */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+/* 💡 Tailwind theme 변수 연결 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* 🌙 다크 모드 대응 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* 🧱 HTML & BODY 기본 설정 */
+html,
+body {
   height: 100%;
   margin: 0;
   padding: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+
+  /* ✅ 글자 선명도 개선 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-weight: 500;
 }
+
+/* 🚀 Tailwind가 레이아웃 제어 (중앙정렬은 layout.tsx에서 담당) */
+
