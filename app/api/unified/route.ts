@@ -20,7 +20,7 @@ if (!(global as any).io) {
 export async function GET() {
   try {
     // ✅ 빌드 에러 방지: 두 번째 인자 [] 추가
-    const result = await query("SELECT data FROM unified WHERE id = 1", []);
+    const result = (await query("SELECT data FROM unified WHERE id = 1", [])) as { rows: { data: any }[] };
     const rows = result.rows.length ? result.rows[0].data : [];
     return NextResponse.json(rows);
   } catch (err) {
