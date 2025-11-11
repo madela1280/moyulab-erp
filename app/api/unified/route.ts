@@ -48,7 +48,7 @@ try {
   console.error("❌ Redis publish error:", e);
 }
 
-if (io) io.emit("update", rows);
+if (io) io.to("global").emit("update", rows);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
