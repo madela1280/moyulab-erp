@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers"; // ✅ 추가
 import { verifyToken } from "@/lib/auth";
 import { query } from "@/lib/db";
 
 export async function GET(req: Request) {
   try {
-    // ✅ 쿠키에서 토큰 추출
-    const token = req.headers
-      .get("cookie")
-      ?.split("token=")[1]
-      ?.split(";")[0];
+    // ✅ 쿠키에서 토큰 추출 (시크릿 모드에서도 정상 작동)
+    const cookieStore = cookies();
+    const token = cookieStore.get("token")?.value;
 
     if (!token) {
       return NextResponse.json({ ok: false, error: "no_token" }, { status: 401 });
@@ -29,7 +28,6 @@ export async function GET(req: Request) {
       WHERE username = $1
       LIMIT 1
     `;
-
     const r = await query(sql, [(decoded as any).username]);
 
     if (r.rows.length === 0) {
@@ -43,4 +41,5 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_token" }, { status: 401 });
   }
 }
+
 
