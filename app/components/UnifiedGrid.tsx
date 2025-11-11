@@ -42,42 +42,53 @@ export default function UnifiedGrid({ viewId = '통합관리' }: { viewId?: '통
   const savingRef = useRef(false);
 
   /** 🔹 DB 데이터 불러오기 + 실시간 소켓 업데이트 */
-  useEffect(() => {
-    const fetchRows = async () => {
-      try {
-        const res = await fetch(`/api/unified?view=${encodeURIComponent(viewId)}`);
-        const data = await res.json();
+useEffect(() => {
+  const fetchRows = async () => {
+    try {
+      const res = await fetch(`/api/unified?view=${encodeURIComponent(viewId)}`);
+      const data = await res.json();
 
-        if (Array.isArray(data) && data.length > 0) {
-          setRows(data);
-        } else {
-          setRows(Array.from({ length: BLANK_ROWS }, () =>
-            Object.fromEntries(colsRender.map((c) => [c, '']))
-          ));
-        }
-      } catch (err) {
-        console.error('❌ 데이터 불러오기 실패:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRows();
-
-    if (socket) {
-      socket.on('connect', () => console.log('⚡ 실시간 연결됨:', socket?.id));
-      socket.on('update', (data: Row[]) => {
-        console.log('📡 실시간 데이터 수신됨:', data);
+      if (Array.isArray(data) && data.length > 0) {
         setRows(data);
-      });
-    }
-
-    return () => {
-      if (socket) {
-        socket.off('update');
+      } else {
+        setRows(
+          Array.from({ length: BLANK_ROWS }, () =>
+            Object.fromEntries(colsRender.map((c) => [c, '']))
+          )
+        );
       }
-    };
-  }, [viewId]);
+    } catch (err) {
+      console.error('❌ 데이터 불러오기 실패:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchRows();
+
+  if (socket) {
+    socket.on('connect', () => console.log('⚡ 실시간 연결됨:', socket?.id));
+
+    // 기존 실시간 이벤트
+    socket.on('update', (data: Row[]) => {
+      console.log('📡 실시간 데이터 수신됨(update):', data);
+      setRows(data);
+    });
+
+    // 🔹 Redis 브로드캐스트 이벤트 추가
+    socket.on('unified:update', (data: Row[]) => {
+      console.log('📡 Redis 브로드캐스트 수신됨(unified:update):', data);
+      setRows(data);
+    });
+  }
+
+  return () => {
+    if (socket) {
+      socket.off('update');
+      socket.off('unified:update');
+    }
+  };
+}, [viewId]);
 
   /** 🔹 자동 저장 */
   const autoSave = async (next: Row[]) => {

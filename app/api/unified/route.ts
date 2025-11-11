@@ -35,9 +35,20 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { rows } = body;
 
-    await query("UPDATE unified SET data = $1 WHERE id = 1", [JSON.stringify(rows)]);
+   await query("UPDATE unified SET data = $1 WHERE id = 1", [JSON.stringify(rows)]);
 
-    if (io) io.emit("update", rows);
+// 🔹 Redis 브로드캐스트 추가 (모든 세션으로 실시간 전파)
+try {
+  const { createClient } = require("redis");
+  const redis = createClient({ url: "redis://127.0.0.1:6379" });
+  await redis.connect();
+  await redis.publish("unified:update", JSON.stringify(rows));
+  await redis.disconnect();
+} catch (e) {
+  console.error("❌ Redis publish error:", e);
+}
+
+if (io) io.emit("update", rows);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
