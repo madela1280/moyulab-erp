@@ -9,14 +9,25 @@ import ExtensionModal from './ExtensionModal';
 
 /** ✅ Socket.IO 전역 연결 (중복 방지) */
 let socket: Socket | null = null;
-if (typeof window !== 'undefined' && !socket) {
+if (typeof window !== "undefined" && !socket) {
   socket = io("https://moulab.kr:4001", {
-  transports: ["websocket"],
-  reconnection: true,
-  reconnectionAttempts: 10,
-  reconnectionDelay: 2000,
-  withCredentials: false,
-});
+    transports: ["websocket"],
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 2000,
+    withCredentials: false,
+  });
+
+  // ✅ 서버의 'global' 룸에 참가 → 일반/시크릿/다른 브라우저 전부 같은 세션 공유
+  socket.on("connect", () => {
+    console.log("⚡ 실시간 연결됨:", socket.id);
+    socket.emit("join", "global");
+  });
+
+  // ✅ Redis 브로드캐스트나 다른 브라우저 업데이트 수신
+  socket.on("unified:update", (data: any) => {
+    console.log("📡 통합 브로드캐스트 수신(unified:update):", data);
+  });
 }
 
 type Row = Record<string, string>;
