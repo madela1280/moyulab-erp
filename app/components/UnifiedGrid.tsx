@@ -1,15 +1,22 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
+import React, { useEffect, useState, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { type Category } from '../lib/rules';
 import { GuideRuleModal, CategoryRuleModal } from './RuleModals';
 import FindPanel from './FindPanel';
 import ExtensionModal from './ExtensionModal';
 
-const socket = io("https://moulab.kr", {
-  transports: ["websocket"],
-});
+/** ✅ Socket.IO 전역 연결 (중복 방지) */
+let socket: Socket | null = null;
+if (typeof window !== 'undefined' && !socket) {
+  socket = io("https://moulab.kr", {
+    transports: ["websocket"],
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 2000,
+  });
+}
 
 type Row = Record<string, string>;
 
@@ -32,6 +39,7 @@ export default function UnifiedGrid({ viewId = '통합관리' }: { viewId?: '통
   const colsRender = columns;
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const savingRef = useRef(false);
 
   /** 🔹 DB 데이터 불러오기 + 실시간 소켓 업데이트 */
   useEffect(() => {
@@ -54,32 +62,39 @@ export default function UnifiedGrid({ viewId = '통합관리' }: { viewId?: '통
       }
     };
 
-       fetchRows();
+    fetchRows();
 
-      // ✅ 소켓 이벤트 등록 (서버에서 데이터 변경 시 실시간 반영)
-    socket.on('update', (data: Row[]) => {
-      setRows(data);
-    });
+    if (socket) {
+      socket.on('connect', () => console.log('⚡ 실시간 연결됨:', socket?.id));
+      socket.on('update', (data: Row[]) => {
+        console.log('📡 실시간 데이터 수신됨:', data);
+        setRows(data);
+      });
+    }
 
-    // ✅ cleanup (React 타입 규칙 준수)
     return () => {
-      socket.off('update');
-      socket.disconnect();
+      if (socket) {
+        socket.off('update');
+      }
     };
   }, [viewId]);
 
   /** 🔹 자동 저장 */
   const autoSave = async (next: Row[]) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     try {
       await fetch('/api/unified', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ viewId, rows: next }),
       });
-      socket.emit('update', next);
+      socket?.emit('update', next);
       console.log('✅ DB 자동저장 완료');
     } catch (err) {
       console.error('❌ 자동저장 실패:', err);
+    } finally {
+      savingRef.current = false;
     }
   };
 
@@ -212,3 +227,4 @@ function ColorMenu({ onApply }: { onApply: (mode: 'bg' | 'text', color?: string)
     </div>
   );
 }
+
