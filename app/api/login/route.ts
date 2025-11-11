@@ -24,8 +24,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "invalid_user" }, { status: 403 });
     }
 
-    // ✅ 타입 안정 처리 (r.rows[0]을 명확히 객체로 단언)
-    const u = r.rows[0] as {
+    // ✅ 안전한 캐스팅 (unknown → 명시 타입)
+    const u = (r.rows[0] as unknown) as {
       username: string;
       password_hash: string;
       salt: string;
@@ -68,4 +68,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+
 
