@@ -10,12 +10,13 @@ import ExtensionModal from './ExtensionModal';
 /** ✅ Socket.IO 전역 연결 (중복 방지) */
 let socket: Socket | null = null;
 if (typeof window !== 'undefined' && !socket) {
-  socket = io("https://moulab.kr", {
-    transports: ["websocket"],
-    reconnection: true,
-    reconnectionAttempts: 10,
-    reconnectionDelay: 2000,
-  });
+  socket = io("https://moulab.kr:4001", {
+  transports: ["websocket"],
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 2000,
+  withCredentials: false,
+});
 }
 
 type Row = Record<string, string>;
