@@ -24,15 +24,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "invalid_user" }, { status: 403 });
     }
 
-    // ✅ 명시적 타입 보강 (빌드 오류 방지용)
-    const u: {
+    // ✅ 타입 안정 처리 (r.rows[0]을 명확히 객체로 단언)
+    const u = r.rows[0] as {
       username: string;
       password_hash: string;
       salt: string;
       role: string;
       name: string;
       phone: string;
-    } = r.rows[0];
+    };
 
     const tryHash = sha256(`${u.salt}|${body.password}`);
 
