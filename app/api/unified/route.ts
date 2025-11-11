@@ -13,10 +13,13 @@ if (!(global as any).io) {
   httpServer.listen(4001, () => console.log("✅ Realtime Socket Server :4001"));
   (global as any).io = io;
 
-  // ✅ 모든 연결 클라이언트 global 룸에 자동 참가
+  // ✅ 모든 클라이언트의 'join' 요청을 처리 (시크릿 모드 포함)
   io.on("connection", (socket) => {
-    socket.join("global");
     console.log("🌐 클라이언트 연결됨:", socket.id);
+    socket.on("join", (room) => {
+      socket.join(room);
+      console.log(`📡 ${socket.id} joined room ${room}`);
+    });
   });
 } else {
   io = (global as any).io;
