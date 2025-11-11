@@ -20,8 +20,8 @@ if (typeof window !== "undefined" && !socket) {
 
   // ✅ 서버의 'global' 룸에 참가 → 일반/시크릿/다른 브라우저 전부 같은 세션 공유
   socket.on("connect", () => {
-    console.log("⚡ 실시간 연결됨:", socket.id);
-    socket.emit("join", "global");
+    console.log("⚡ 실시간 연결됨:", socket!.id);
+    socket!.emit("join", "global");
   });
 
   // ✅ Redis 브로드캐스트나 다른 브라우저 업데이트 수신
