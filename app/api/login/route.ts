@@ -24,7 +24,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "invalid_user" }, { status: 403 });
     }
 
-    const u = r.rows[0];
+    // ✅ 명시적 타입 보강 (빌드 오류 방지용)
+    const u: {
+      username: string;
+      password_hash: string;
+      salt: string;
+      role: string;
+      name: string;
+      phone: string;
+    } = r.rows[0];
+
     const tryHash = sha256(`${u.salt}|${body.password}`);
 
     if (tryHash !== u.password_hash) {
@@ -59,3 +68,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 }
+
