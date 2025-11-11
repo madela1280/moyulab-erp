@@ -1,23 +1,19 @@
-import { Pool } from "pg";
+import pkg from "pg";
+const { Pool } = pkg;
 
-const pool = new Pool({
-  host: process.env.PGHOST || "localhost",
-  port: Number(process.env.PGPORT) || 5432,
-  user: process.env.PGUSER || "postgres",
-  password: process.env.PGPASSWORD || "StrongPassword123!",
-  database: process.env.PGDATABASE || "erp",
-  ssl: process.env.PGSSLMODE === "require" ? { rejectUnauthorized: false } : undefined,
+export const pool = new Pool({
+  host: "localhost",
+  user: "postgres",
+  password: "StrongPassword123!",
+  database: "erp",
+  port: 5432,
 });
 
-// ✅ 공용 쿼리 함수
-export async function query(text: string, params?: any[]) {
+export async function query(text, params) {
   const client = await pool.connect();
   try {
     const res = await client.query(text, params);
     return res;
-  } catch (err) {
-    console.error("❌ DB query error:", err);
-    throw err;
   } finally {
     client.release();
   }
