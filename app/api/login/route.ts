@@ -58,9 +58,9 @@ export async function POST(req: Request) {
     res.cookies.set("token", token, {
       httpOnly: true,
       path: "/",
-      sameSite: "lax",
-      secure: true,
-      domain: ".moulab.kr",
+      sameSite: "none", // ✅ 모든 브라우저·시크릿 모드 호환
+      secure: true,     // ✅ HTTPS 전용
+      domain: ".moulab.kr", // ✅ 서브도메인 포함 전체 공유
       maxAge: 7 * 24 * 60 * 60,
     });
 

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";   // ✅ async cookies() 사용
+import { cookies } from "next/headers";   // ✅ async 아님 (수정됨)
 import { verifyToken } from "@/lib/auth";
 import { query } from "@/lib/db";
 
 export async function GET(req: Request) {
   try {
-    // ✅ 쿠키에서 토큰 추출 (Next.js 15 async 대응)
-    const cookieStore = await cookies();
+    // ✅ 쿠키에서 토큰 추출 (Next.js 15 호환)
+    const cookieStore = cookies();
     const token = cookieStore.get("token")?.value;
 
     if (!token) {
@@ -36,5 +36,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_token" }, { status: 401 });
   }
 }
+
 
 

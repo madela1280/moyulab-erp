@@ -12,6 +12,12 @@ if (!(global as any).io) {
   io = new Server(httpServer, { cors: { origin: "*" } });
   httpServer.listen(4001, () => console.log("✅ Realtime Socket Server :4001"));
   (global as any).io = io;
+
+  // ✅ 모든 연결 클라이언트 global 룸에 자동 참가
+  io.on("connection", (socket) => {
+    socket.join("global");
+    console.log("🌐 클라이언트 연결됨:", socket.id);
+  });
 } else {
   io = (global as any).io;
 }
@@ -19,8 +25,9 @@ if (!(global as any).io) {
 /** 🔹 GET: DB 불러오기 */
 export async function GET() {
   try {
-    // ✅ 빌드 에러 방지: 두 번째 인자 [] 추가
-    const result = (await query("SELECT data FROM unified WHERE id = 1", [])) as unknown as { rows: { data: any }[] };
+    const result = (await query("SELECT data FROM unified WHERE id = 1", [])) as unknown as {
+      rows: { data: any }[];
+    };
     const rows = result.rows.length ? result.rows[0].data : [];
     return NextResponse.json(rows);
   } catch (err) {
@@ -35,20 +42,21 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { rows } = body;
 
-   await query("UPDATE unified SET data = $1 WHERE id = 1", [JSON.stringify(rows)]);
+    await query("UPDATE unified SET data = $1 WHERE id = 1", [JSON.stringify(rows)]);
 
-// 🔹 Redis 브로드캐스트 추가 (모든 세션으로 실시간 전파)
-try {
-  const { createClient } = require("redis");
-  const redis = createClient({ url: "redis://127.0.0.1:6379" });
-  await redis.connect();
-  await redis.publish("unified:update", JSON.stringify(rows));
-  await redis.disconnect();
-} catch (e) {
-  console.error("❌ Redis publish error:", e);
-}
+    // 🔹 Redis 브로드캐스트 추가 (모든 세션으로 실시간 전파)
+    try {
+      const { createClient } = require("redis");
+      const redis = createClient({ url: "redis://127.0.0.1:6379" });
+      await redis.connect();
+      await redis.publish("unified:update", JSON.stringify(rows));
+      await redis.disconnect();
+    } catch (e) {
+      console.error("❌ Redis publish error (무시하고 계속):", e);
+    }
 
-if (io) io.to("global").emit("update", rows);
+    // ✅ 전역 룸(global)에 실시간 전송
+    if (io) io.to("global").emit("update", rows);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
