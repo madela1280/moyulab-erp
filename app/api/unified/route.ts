@@ -19,7 +19,8 @@ if (!(global as any).io) {
 /** 🔹 GET: DB 불러오기 */
 export async function GET() {
   try {
-    const result = await query("SELECT data FROM unified WHERE id = 1");
+    // ✅ 빌드 에러 방지: 두 번째 인자 [] 추가
+    const result = await query("SELECT data FROM unified WHERE id = 1", []);
     const rows = result.rows.length ? result.rows[0].data : [];
     return NextResponse.json(rows);
   } catch (err) {
@@ -44,5 +45,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "db_error" }, { status: 500 });
   }
 }
+
 
 
