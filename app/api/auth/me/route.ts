@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";   // ✅ async 아님 (수정됨)
+import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 import { query } from "@/lib/db";
 
 export async function GET(req: Request) {
   try {
-    // ✅ 쿠키에서 토큰 추출 (Next.js 15 호환)
-    const cookieStore = cookies();
+    // ✅ Next.js 15 타입 오류 우회 (Promise 아님)
+    const cookieStore = cookies() as any;
     const token = cookieStore.get("token")?.value;
 
     if (!token) {
