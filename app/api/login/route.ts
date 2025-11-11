@@ -59,6 +59,8 @@ export async function POST(req: Request) {
       httpOnly: true,
       path: "/",
       sameSite: "lax",
+      secure: true,
+      domain: ".moulab.kr",
       maxAge: 7 * 24 * 60 * 60,
     });
 
