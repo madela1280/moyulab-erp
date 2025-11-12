@@ -6,8 +6,8 @@ import { query } from "@/lib/db";
 export async function GET(req: Request) {
   try {
     // ✅ Next.js 15에서는 cookies()는 Promise 아님 → await 제거
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+   const cookieStore = cookies() as unknown as Awaited<ReturnType<typeof cookies>>;
+   const token = cookieStore?.get("token")?.value || null;
 
     if (!token) {
       return NextResponse.json({ ok: false, error: "no_token" }, { status: 401 });
