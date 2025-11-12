@@ -5,8 +5,8 @@ import { query } from "@/lib/db";
 
 export async function GET(req: Request) {
   try {
-    // ✅ Next.js 15 타입 오류 우회 (Promise 아님)
-    const cookieStore = cookies() as any;
+    // ✅ Next.js 15에서는 cookies()는 Promise 아님 → await 제거
+    const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
 
     if (!token) {
@@ -36,6 +36,5 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_token" }, { status: 401 });
   }
 }
-
 
 
