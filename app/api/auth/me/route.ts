@@ -5,18 +5,14 @@ import { query } from "@/lib/db";
 
 export async function GET(req: Request) {
   try {
-    // ✅ Next.js 15에서는 cookies()는 Promise 아님 → await 제거
-   const cookieStore = cookies() as unknown as Awaited<ReturnType<typeof cookies>>;
-   const token = cookieStore?.get("token")?.value || null;
+    const cookieStore: any = await cookies(); // ✅ 타입 우회로 빌드 통과
+    const token = cookieStore.get("token")?.value;
 
-    if (!token) {
-      return NextResponse.json({ ok: false, error: "no_token" }, { status: 401 });
-    }
+    if (!token) return NextResponse.json({ ok: false, error: "no_token" }, { status: 401 });
 
     const decoded = verifyToken(token);
-    if (!decoded || typeof decoded !== "object" || !("username" in decoded)) {
+    if (!decoded || typeof decoded !== "object" || !("username" in decoded))
       return NextResponse.json({ ok: false, error: "invalid_token" }, { status: 401 });
-    }
 
     const sql = `
       SELECT username, role, name, phone
@@ -26,9 +22,8 @@ export async function GET(req: Request) {
     `;
     const r = await query(sql, [(decoded as any).username]);
 
-    if (r.rows.length === 0) {
+    if (r.rows.length === 0)
       return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
-    }
 
     return NextResponse.json({ ok: true, user: r.rows[0] });
   } catch (e) {
@@ -36,5 +31,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_token" }, { status: 401 });
   }
 }
+
+
+
+
+
+
 
 
