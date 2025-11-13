@@ -13,7 +13,10 @@ export async function query(text: string, params?: any[]) {
   } finally {
     client.release();
   }
+
 }
+
+
 
 
 
