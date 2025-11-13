@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { query } from "@/lib/db";
+import { query } from "@/lib/db/";
 import { createToken } from "@/lib/auth";
 
 type ReqBody = { username: string; password: string };
